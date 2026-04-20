@@ -23,7 +23,7 @@ fi
 
 # 2. check selinux and disable if necessary
 selinux_status=$(getenforce)
-if [[ "$selinux_status" == "Enforcing"]]; then
+if [[ "$selinux_status" == "Enforcing" ]]; then
     setenforce 0
     sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
     print_colored "$GREEN" "[Success] SELinux disabled"

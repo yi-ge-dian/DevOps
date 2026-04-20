@@ -7,7 +7,8 @@ YELLOW='\033[0;33m'
 GREEN='\033[0;32m'
 NC='\033[0m'  # No Color
 
-pritunl_tar_path ="/root/dongwenlong/pritunl.tar"
+# Remember to unzip after uploading
+pritunl_tar_path="/root/dongwenlong/pritunl.tar"
 
 # 0. Function to print colored messages
 print_colored() {
@@ -65,11 +66,10 @@ print_colored "$GREEN" "[Success] Pritunl container started"
 # 4. print the pritunl default password
 docker exec pritunl pritunl default-password
 if [[ $? -ne 0 ]]; then
-    print_colored "$RED" "[Error] Failed to get the pritunl default password
+    print_colored "$RED" "[Error] Failed to get the pritunl default password"
     exit 1
 fi
 
-
-Administrator default password:
-  username: "pritunl"
-  password: "5cqIOh6QIipo"
+# Administrator default password:
+# username: "pritunl"
+# password: "5cqIOh6QIipo"

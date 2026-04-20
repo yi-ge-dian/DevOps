@@ -97,7 +97,7 @@ LimitCORE=infinity
 # Older systemd versions default to a LimitNOFILE of 1024:1024, which is insufficient for many
 # applications including dockerd itself and will be inherited. Raise the hard limit, while
 # preserving the soft limit for select(2).
-LimitNOFILE=1024:524288
+LimitNOFILE=65535:524288
 
 # Comment TasksMax if your systemd version does not support it.
 # Only systemd 226 and above support this option.
