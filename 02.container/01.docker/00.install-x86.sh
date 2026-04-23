@@ -1,29 +1,26 @@
 #!/bin/bash
 
-# Color definitions
+# 色卡
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 YELLOW='\033[0;33m'
 GREEN='\033[0;32m'
 NC='\033[0m'  # No Color
 
-docker_version="26.1.4"
-docker_compose_version="2.27.1"
-
-# 0. Function to print colored messages
+# 颜色打印函数
 print_colored() {
     local color="$1"
     local message="$2"
     echo -e "${color}${message}${NC}"
 }
 
-# 1. check if the script is run as root
+# 校验是否为 root 用户
 if [[ $EUID -ne 0 ]]; then
    print_colored "$RED" "[Error] This script must be run as root"
    exit 1
 fi
 
-# 2. get the machine architecture
+# 获得 CPU 架构
 arch=$(uname -m)
 if [[ "$arch" == "x86_64" ]]; then
     print_colored "$GREEN" "[Success] Machine architecture: x86_64"
@@ -34,7 +31,10 @@ else
     exit 1
 fi
 
-# 3. wget the docker tar, check if the file exists and is valid
+docker_version="26.1.4"
+docker_compose_version="2.28.1"
+
+# 检查 tar 包是否存在，如果不存在则下载
 docker_tar="docker-${docker_version}.tgz"
 if [[ -f "$docker_tar" ]]; then
     print_colored "$GREEN" "[Success] Docker tar already exists"
@@ -48,21 +48,50 @@ else
     print_colored "$GREEN" "[Success] Docker tar downloaded"
 fi
 
-# 4. extract the docker tar and move the binaries to /usr/local/bin
-tar -xvf "$docker_tar"
-if [[ $? -ne 0 ]]; then
-    print_colored "$RED" "[Error] Failed to extract Docker tar"
-    exit 1
-fi
-cp -a docker/* /usr/local/bin/
-if [[ $? -ne 0 ]]; then
-    print_colored "$RED" "[Error] Failed to move Docker binaries"
-    exit 1
-fi
-print_colored "$GREEN" "[Success] Docker binaries moved to /usr/local/bin"
-
-# 5. configure the docker systemd service
-cat > /usr/lib/systemd/system/docker.service << EOF
+# 检查 docker 是否已经安装，如果安装则跳过
+if command -v docker &> /dev/null; then
+    print_colored "$GREEN" "[Success] Docker is already installed"
+else
+    # 解压 tar 包并安装
+    tar -xvf "$docker_tar"
+    if [[ $? -ne 0 ]]; then
+        print_colored "$RED" "[Error] Failed to extract Docker tar"
+        exit 1
+    fi
+    print_colored "$GREEN" "[Success] Docker tar extracted"
+    cp -a docker/* /usr/local/bin/
+    if [[ $? -ne 0 ]]; then
+        print_colored "$RED" "[Error] Failed to copy Docker binaries"
+        exit 1
+    fi
+    print_colored "$GREEN" "[Success] Docker binaries copied"
+    # 创建 Docker 数据目录和配置文件
+    mkdir -p /data/docker /etc/docker
+    cat > /etc/docker/daemon.json << EOF
+{
+  "registry-mirrors":[
+    "https://docker.1panel.live",
+    "https://docker.m.daocloud.io",
+    "https://docker.rainbond.cc"
+  ],
+  "data-root": "/data/docker",
+  "log-driver": "json-file",
+  "log-opts": {
+      "max-size": "100m",
+      "max-file": "3"
+  },
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "storage-driver": "overlay2",
+  "live-restore": true,
+  "experimental": false
+}
+EOF
+    if [[ $? -ne 0 ]]; then
+        print_colored "$RED" "[Error] Failed to configure Docker daemon"
+        exit 1
+    fi
+    print_colored "$GREEN" "[Success] Docker daemon configured"
+    cat > /usr/lib/systemd/system/docker.service << EOF
 [Unit]
 Description=Docker Application Container Engine
 Documentation=https://docs.docker.com
@@ -109,51 +138,28 @@ Delegate=yes
 [Install]
 WantedBy=multi-user.target
 EOF
-
-chmod +x /usr/lib/systemd/system/docker.service
-
-mkdir -p /etc/docker/
-mkdir -p /data/docker
-cat > /etc/docker/daemon.json << EOF
-{
-  "registry-mirrors":[
-    "https://docker.1panel.live",
-    "https://docker.m.daocloud.io",
-    "https://docker.rainbond.cc"
-  ],
-  "data-root": "/data/docker",
-  "log-driver": "json-file",
-  "log-opts": {
-      "max-size": "100m",
-      "max-file": "3"
-  },
-  "exec-opts": ["native.cgroupdriver=systemd"],
-  "storage-driver": "overlay2",
-  "live-restore": true,
-  "experimental": false
-}
-EOF
-print_colored "$GREEN" "[Success] Docker systemd service configured"
-
-# 6. start the docker service and enable it to start on boot
-systemctl daemon-reload
-systemctl start docker
-if [[ $? -ne 0 ]]; then
-    print_colored "$RED" "[Error] Failed to start Docker service"
-    exit 1
+    chmod +x /usr/lib/systemd/system/docker.service
+    if [[ $? -ne 0 ]]; then
+        print_colored "$RED" "[Error] Failed to set executable permissions for Docker service"
+        exit 1
+    fi
+    print_colored "$GREEN" "[Success] Docker systemd service configured"
+    # 启动 Docker 服务并设置为开机自启
+    systemctl daemon-reload
+    systemctl enable docker --now
+    if [[ $? -ne 0 ]]; then
+        print_colored "$RED" "[Error] Failed to start Docker service"
+        exit 1
+    fi
+    print_colored "$GREEN" "[Success] Docker service started and enabled on boot"
 fi
-systemctl enable docker
-if [[ $? -ne 0 ]]; then
-    print_colored "$RED" "[Error] Failed to enable Docker service"
-    exit 1
-fi
-print_colored "$GREEN" "[Success] Docker service started and enabled on boot"
 
-# 7. check the docker version
+# 打印 Docker 版本信息
 docker version
 
+# https://github.com/docker/compose/releases/download/v2.28.1/docker-compose-linux-x86_64
 
-# 8. install docker-compose
+# 安装 install docker-compose
 docker_compose_file="docker-compose-linux-${arch}"
 if [[ -f "$docker_compose_file" ]]; then
     print_colored "$GREEN" "[Success] Docker Compose file already exists"
@@ -167,17 +173,24 @@ else
     print_colored "$GREEN" "[Success] Docker Compose file downloaded"
 fi
 
-cp -a "$docker_compose_file" "/usr/local/bin/docker-compose"
-if [[ $? -ne 0 ]]; then
-    print_colored "$RED" "[Error] Failed to copy Docker Compose"
-    exit 1
+# 检查 Docker Compose 是否已安装
+if [[ -f "/usr/local/bin/docker-compose" ]]; then
+    print_colored "$GREEN" "[Success] Docker Compose already installed"
+else
+    print_colored "$BLUE" "[Info] Installing Docker Compose v${docker_compose_version}"
+    cp -a "$docker_compose_file" "/usr/local/bin/docker-compose"
+    if [[ $? -ne 0 ]]; then
+        print_colored "$RED" "[Error] Failed to copy Docker Compose"
+        exit 1
+    fi
+    print_colored "$GREEN" "[Success] Docker Compose copied to /usr/local/bin"
+    # 设置 Docker Compose 的可执行权限
+    if ! chmod +x "/usr/local/bin/docker-compose"; then
+        print_colored "$RED" "[Error] Failed to set executable permissions for Docker Compose"
+        rm -f "/usr/local/bin/docker-compose"
+        exit 1
+    fi
+    print_colored "$GREEN" "[Success] Docker Compose v${docker_compose_version} installed"
 fi
 
-if ! chmod +x "/usr/local/bin/docker-compose"; then
-    print_colored "$RED" "[Error] Failed to set executable permissions for Docker Compose"
-    rm -f "/usr/local/bin/docker-compose"
-    exit 1
-fi
-
-print_colored "$GREEN" "[Success] Docker Compose v${docker_compose_version} installed"
 docker-compose version
