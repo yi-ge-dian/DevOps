@@ -183,14 +183,14 @@ else
         print_colored "$RED" "[Error] Failed to copy Docker Compose"
         exit 1
     fi
-    print_colored "$GREEN" "[Success] Docker Compose copied to /usr/local/bin"
     # 设置 Docker Compose 的可执行权限
-    if ! chmod +x "/usr/local/bin/docker-compose"; then
-        print_colored "$RED" "[Error] Failed to set executable permissions for Docker Compose"
-        rm -f "/usr/local/bin/docker-compose"
-        exit 1
-    fi
-    print_colored "$GREEN" "[Success] Docker Compose v${docker_compose_version} installed"
+    chmod +x "/usr/local/bin/docker-compose"
 fi
 
 docker-compose version
+if [[ $? -ne 0 ]]; then
+    print_colored "$RED" "[Error] Failed to start Docker Compose"
+    exit 1
+fi
+print_colored "$GREEN" "[Success] Docker Compose started"
+
