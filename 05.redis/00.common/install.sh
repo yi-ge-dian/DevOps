@@ -1,31 +1,26 @@
 #!/bin/bash
 
-# Color definitions
+# 色卡
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 YELLOW='\033[0;33m'
 GREEN='\033[0;32m'
 NC='\033[0m'  # No Color
 
-Redis_version="7.4.8"
-Port="6379"
-Master_IP="10.0.0.181"
-Master_Port="6379"
-
-# 0. Function to print colored messages
+# 颜色打印函数
 print_colored() {
     local color="$1"
     local message="$2"
     echo -e "${color}${message}${NC}"
 }
 
-# 1. check if the script is run as root
+# 校验是否为 root 用户
 if [[ $EUID -ne 0 ]]; then
    print_colored "$RED" "[Error] This script must be run as root"
    exit 1
 fi
 
-# 2. get the machine architecture
+# 获得 CPU 架构
 arch=$(uname -m)
 if [[ "$arch" == "x86_64" ]]; then
     print_colored "$GREEN" "[Success] Machine architecture: x86_64"
@@ -36,7 +31,10 @@ else
     exit 1
 fi
 
-# 3. perf the redis system
+Redis_version="7.4.8"
+Port="6379"
+
+# 优化系统参数
 cat > /etc/sysctl.conf << EOF
 net.core.somaxconn = 1024
 net.ipv4.tcp_max_syn_backlog = 4096
@@ -45,27 +43,28 @@ EOF
 sysctl -p
 print_colored "$GREEN" "[Success] Redis perf configured"
 
-
-# 4. set transparent_hugepage
-# right now
+# 设置透明大页
 echo never > /sys/kernel/mm/transparent_hugepage/enabled
-# forever
 echo 'echo never > /sys/kernel/mm/transparent_hugepage/enabled' >> /etc/rc.d/rc.local
 chmod +x /etc/rc.d/rc.local
 print_colored "$GREEN" "[Success] Transparent_hugepage set"
 
-
-# 5. wget the redis tar, check if the file exists and is valid 
+# 判断是否下载了源码包
 cd /usr/local/
 if [[ -f "redis-${Redis_version}.tar.gz" ]]; then
     print_colored "$GREEN" "[Success] Redis tar already exists"
 else
     print_colored "$BLUE" "[Info] Downloading Redis v${Redis_version}"
     wget https://download.redis.io/releases/redis-${Redis_version}.tar.gz
+    if [[ $? -ne 0 ]]; then
+        print_colored "$RED" "[Error] Failed to download Redis"
+        exit 1
+    fi
+    print_colored "$GREEN" "[Success] Redis tar downloaded"
 fi
 
-# 6. install redis
-tar -xvf redis-${Redis_version}.tar.gz
+# 安装 redis
+tar xvf redis-${Redis_version}.tar.gz
 ln -s redis-${Redis_version} redis
 cd /usr/local/redis
 make -j "$(nproc)" USE_SYSTEMD=yes && make install
@@ -75,24 +74,25 @@ if [[ $? -ne 0 ]]; then
 fi
 print_colored "$GREEN" "[Success] Redis installed"
 
-# 7. redis version
+# 查看 redis 版本
 cd /usr/local/
-chown -R redis.redis /usr/local/redis/
 redis-server -v
 
-# 8. congfiue path redis
+# 配置环境变量
 cat >> /etc/profile << EOF
 export PATH=/usr/local/redis/bin:$PATH
 EOF
 source /etc/profile
 
-# 9. configure redis
+# 配置目录
 mkdir -pv /data/$Port/{data,etc,log,run,backup}
 useradd -r -s /sbin/nologin redis
 chown -R redis.redis /data/$Port/
-chmod -R 700 /data/$Port
+chown -R redis.redis /usr/local/redis/
+chmod 700 /data/$Port
 
-cp /usr/local/redis/redis.conf /data/$Port/etc/redis.conf
+# 配置文件
+cp -a /usr/local/redis/redis.conf /data/$Port/etc/redis.conf
 cat >> /data/$Port/etc/redis.conf << EOF
 ####################################### basic configuration
 bind 0.0.0.0
@@ -122,17 +122,11 @@ rename-command FLUSHALL ""
 rename-command DEBUG ""
 rename-command SHUTDOWN ""
 rename-command KEYS ""
-####################################### master-slave configuration
-masterauth 123456
-min-slaves-to-write 0
-min-slaves-max-lag 15
-slaveof $Master_IP $Master_Port
-slave-read-only yes
 EOF
 print_colored "$GREEN" "[Success] Redis conf configured"
 
-# 10. configure redis systemd service
-cat > /usr/lib/systemd/system/redis.service<< EOF
+# 配置 systemd
+cat > /usr/lib/systemd/system/redis${Port}.service << EOF
 [Unit]
 Description=Redis Server
 After=network.target
@@ -152,19 +146,19 @@ WantedBy=multi-user.target
 EOF
 print_colored "$GREEN" "[Success] Redis systemd service configured"
 
-# 11. start redis
+# 启动 redis
 systemctl daemon-reload
-systemctl start redis
+systemctl start redis${Port}
 if [[ $? -ne 0 ]]; then
     print_colored "$RED" "[Error] Failed to start Redis service"
     exit 1
 fi
-systemctl enable redis
+systemctl enable redis${Port}
 if [[ $? -ne 0 ]]; then
     print_colored "$RED" "[Error] Failed to enable Redis service"
     exit 1
 fi
 print_colored "$GREEN" "[Success] Redis service started and enabled on boot"
 
-# 12. check redis status
-systemctl status redis
+# 查看 redis 状态
+systemctl status redis${Port}
