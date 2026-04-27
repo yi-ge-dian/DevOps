@@ -31,9 +31,6 @@ else
     exit 1
 fi
 
-# todo：验证是否一定需要做
-# yum install -y epel-release
-
 # 配置 PostgreSQL 15 源
 cat > /etc/yum.repos.d/pgdg-custom.repo << EOF
 [pgdg-common]
@@ -48,11 +45,9 @@ baseurl=https://download.postgresql.org/pub/repos/yum/15/redhat/rhel-7-x86_64
 enabled=1
 gpgcheck=0
 EOF
+yum clean all && yum makecache 
 
-# todo：验证是否一定需要做
-# yum clean all && yum makecache 
-
-# 安装包
+# 安装 PostGIS 3.3
 cd /usr/local/pg15.5-rpm
 if [[ -f postgresql15-contrib-15.5-1PGDG.rhel7.x86_64.rpm ]]; then
     print_colored "$GREEN" "PostgreSQL 15.5 contrib RPM package already downloaded"
@@ -61,16 +56,19 @@ else
     wget https://download.postgresql.org/pub/repos/yum/15/redhat/rhel-7-x86_64/postgresql15-contrib-15.5-1PGDG.rhel7.x86_64.rpm
 fi
 
-
-# todo 验证是否一定需要做
-# yum install -y python3
-rpm -ivh postgresql15-contrib-15.5-1PGDG.rhel7.x86_64.rpm
-
-# 安装 PostGIS 3.3
+yum install -y python36-libs
+rpm -ivh postgresql15-contrib-15.5-1PGDG.rhel7.x86_64.rpm --nosignature
 yum install -y postgis33_15
 
 # 检查 postgis 扩展是否已启用
-if psql -c "SELECT PostGIS_Version();" | grep -q "3.3"; then
+psql -c "CREATE EXTENSION postgis;"
+if [[ $? -eq 0 ]]; then
+    print_colored "$GREEN" "[Success] PostGIS 3.3 extension enabled"
+else
+    print_colored "$RED" "[Error] PostGIS 3.3 extension not enabled"
+fi
+psql -c "SELECT  PostGIS_Full_Version();"
+if [[ $? -eq 0 ]]; then
     print_colored "$GREEN" "[Success] PostGIS 3.3 installed successfully"
 else
     print_colored "$RED" "[Error] PostGIS 3.3 installation failed"

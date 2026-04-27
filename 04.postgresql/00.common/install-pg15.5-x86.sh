@@ -62,10 +62,6 @@ rpm -ivh postgresql15-libs-15.5-1PGDG.rhel7.x86_64.rpm
 rpm -ivh postgresql15-15.5-1PGDG.rhel7.x86_64.rpm
 rpm -ivh postgresql15-server-15.5-1PGDG.rhel7.x86_64.rpm
 
-
-# 创建 PostgreSQL 用户
-useradd -r -s /sbin/nologin postgres
-
 # 创建目录，配置文件存在于 data 目录下，所以不需要单独创建 etc 目录
 mkdir -pv /data/$Port/{archive,backup,data,log,run}
 
@@ -76,7 +72,7 @@ chown -R postgres.postgres /data/$Port
 chmod 700 /data/$Port
 
 # 设置环境变量
-cat >> /etc/profile << 'EOF'
+cat >> /etc/profile << EOF
 export PGHOME=/usr/local/pgsql
 export PGHOST=/data/$Port/run
 export PGPORT=$Port
@@ -87,8 +83,7 @@ EOF
 source /etc/profile
 
 # 初始化数据库
-# su -s /bin/bash postgres -c "initdb -D /data/$Port/data -U postgres -E UTF8 --locale=zh_CN.UTF-8"
-sudo -u postgres initdb -D /data/$Port/data -U postgres -E UTF8 --locale=zh_CN.UTF-8
+sudo -iu postgres initdb -D /data/$Port/data -U postgres -E UTF8 --locale=zh_CN.UTF-8
 
 # 请手动编辑 postgresql.conf 和 pg_hba.conf 文件，以设置适合您环境的适当配置
 cp -a /data/$Port/data/pg_hba.conf /data/$Port/data/pg_hba.conf.bak
@@ -133,14 +128,14 @@ EOF
 
 # 系统服务启动
 cp -a /usr/lib/systemd/system/postgresql-15.service /usr/lib/systemd/system/postgresql$Port.service
-sed -i 's#Environment=PGDATA=/var/lib/pgsql/15/data/#Environment=PGDATA=/data/$Port/data/#g' /usr/lib/systemd/system/postgresql$Port.service
-sed -i 's#ExecStartPre=/usr/pgsql-15/#ExecStartPre=/usr/local/pgsql/#g' /usr/lib/systemd/system/postgresql$Port.service
-sed -i 's#ExecStart=/usr/pgsql-15/#ExecStart=/usr/local/pgsql/#g' /usr/lib/systemd/system/postgresql$Port.service
+sed -i "s#Environment=PGDATA=/var/lib/pgsql/15/data/#Environment=PGDATA=/data/$Port/data/#g" /usr/lib/systemd/system/postgresql$Port.service
+sed -i "s#ExecStartPre=/usr/pgsql-15/#ExecStartPre=/usr/local/pgsql/#g" /usr/lib/systemd/system/postgresql$Port.service
+sed -i "s#ExecStart=/usr/pgsql-15/#ExecStart=/usr/local/pgsql/#g" /usr/lib/systemd/system/postgresql$Port.service
 systemctl daemon-reload
-systemctl enable postgresql --now
-if systemctl is-active --quiet postgresql; then
+systemctl enable postgresql$Port --now
+if systemctl is-active --quiet postgresql$Port; then
     print_colored "$GREEN" "PostgreSQL service started successfully"
-    systemctl status postgresql --no-pager
+    systemctl status postgresql$Port --no-pager
 else
     print_colored "$RED" "Failed to start PostgreSQL service"
     exit 1

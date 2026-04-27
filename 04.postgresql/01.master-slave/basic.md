@@ -40,7 +40,7 @@ systemctl status postgresql
 # -R : 在备份完成后自动生成 standby.conf 标识文件，同时把 recovery (pg11) 配置从库连接的参数转移到 postgresql.conf 文件中了
 # -l : backup20260419 : 备份文件的标签，便于识别和管理
 cd /data/5432
-su -s /bin/bash postgres -c "pg_basebackup -h 10.0.0.61 -p 5432 -U repl_user -D /data/5432/data -F p -P -R -l backup20260419"
+sudo -iu postgres pg_basebackup -h 10.0.0.61 -p 5432 -U repl_user -D /data/5432/data -F p -P -R -l backup20260419
 
 # 查看会产生一个标识文件：standby.signal
 ll /data/5432/data/standby.signal
