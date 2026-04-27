@@ -87,7 +87,8 @@ EOF
 source /etc/profile
 
 # 初始化数据库
-su -s /bin/bash postgres -c "initdb -D /data/$Port/data -U postgres -E UTF8 --locale=zh_CN.UTF-8"
+# su -s /bin/bash postgres -c "initdb -D /data/$Port/data -U postgres -E UTF8 --locale=zh_CN.UTF-8"
+sudo -u postgres initdb -D /data/$Port/data -U postgres -E UTF8 --locale=zh_CN.UTF-8
 
 # 请手动编辑 postgresql.conf 和 pg_hba.conf 文件，以设置适合您环境的适当配置
 cp -a /data/$Port/data/pg_hba.conf /data/$Port/data/pg_hba.conf.bak

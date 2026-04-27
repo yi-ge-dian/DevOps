@@ -1,27 +1,42 @@
 #!/bin/bash
 
-# Color definitions
+# 色卡
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 YELLOW='\033[0;33m'
 GREEN='\033[0;32m'
 NC='\033[0m'  # No Color
 
-
-# 使用说明：
-# ./install-repmgr-x86.sh <host_ip> <node_id> <register_status>
-# host_ip: 主机IP地址
-# node_id: 节点ID
-# register_status: 注册状态
-# ./install-repmgr-x86.sh 10.0.0.61 1 primary
-# ./install-repmgr-x86.sh 10.0.0.62 2 standby
-
-# 0. Function to print colored messages
+# 颜色打印函数
 print_colored() {
     local color="$1"
     local message="$2"
     echo -e "${color}${message}${NC}"
 }
+
+# 校验是否为 root 用户
+if [[ $EUID -ne 0 ]]; then
+   print_colored "$RED" "[Error] This script must be run as root"
+   exit 1
+fi
+
+# 获得 CPU 架构
+arch=$(uname -m)
+if [[ "$arch" == "x86_64" ]]; then
+    print_colored "$GREEN" "[Success] Machine architecture: x86_64"
+elif [[ "$arch" == "aarch64" ]]; then
+    print_colored "$GREEN" "[Success] Machine architecture: aarch64"
+else
+    print_colored "$RED" "[Error] Unsupported machine architecture: $arch"
+    exit 1
+fi
+
+# 使用说明：
+# ./install-repmgr-master-x86.sh <host_ip> <node_id> <register_status>
+# host_ip: 主机IP地址
+# node_id: 节点ID
+# register_status: 注册状态
+# ./install-repmgr-master-x86.sh 10.0.0.61 1 primary
 
 # host_ip 需要作为传入的参数，如果不传入报错
 if [ -z "$host_ip" ]; then
@@ -44,18 +59,7 @@ if [ -z "$register_status" ]; then
 fi
 register_status=$3
 
-# 1. check if the script is run as root
-if [[ $EUID -ne 0 ]]; then
-   print_colored "$RED" "[Error] This script must be run as root"
-   exit 1
-fi
-
-# 2. get the architecture of the system
-arch=$(uname -m)
-print_colored "$BLUE" "System architecture: $arch"
-
-
-# 3. download and install repgmr RPM packages
+# 下载 repmgr rpm 包
 # repmgr_15-5.3.3-1.rhel7.x86_64.rpm                 02-Jan-2024 18:05              284208
 # repmgr_15-5.4.0-1.rhel7.x86_64.rpm                 02-Jan-2024 18:05              287604
 # repmgr_15-5.4.1-1PGDG.rhel7.x86_64.rpm             02-Jan-2024 18:05              287784
@@ -76,14 +80,14 @@ fi
 rpm -ivh repmgr-5.5.0-1.rhel7.x86_64.rpm
 source /etc/profile
 
-# 4. create user and set password for repmgr
-psql -U postgres -c "CREATE USER repmgr WITH SUPERUSER LOGIN PASSWORD '123456';"
-# 5. create database for repmgr
-psql -U postgres -c "CREATE DATABASE repmgr OWNER repmgr;"
-# 6. create schema for repmgr
-psql -U postgres -c "ALTER USER repmgr SET search_path TO repmgr, public;"
+# 创建 repmgr 用户
+psql -c "CREATE USER repmgr WITH SUPERUSER LOGIN PASSWORD '123456';"
+# 创建 repmgr 数据库
+psql -c "CREATE DATABASE repmgr OWNER repmgr;"
+# 更改 repmgr schema
+psql -c "ALTER USER repmgr SET search_path TO repmgr, public;"
 
-# 5. add pg_hba.conf entry
+# 修改 pg 白名单
 cat >> /data/5432/data/pg_hba.conf << EOF
 local repmgr repmgr md5
 host repmgr repmgr 127.0.0.1/32 md5
@@ -94,8 +98,9 @@ host replication repmgr 127.0.0.1/32 md5
 host replication repmgr 0.0.0.0/24 md5
 EOF
 
-# 6. reload postgresql
-su -s /bin/bash postgres -c "pg_ctl reload"
+# 重新加载配置
+# su -s /bin/bash postgres -c "pg_ctl reload"
+sudo -u postgres pg_ctl reload
 
 # 7. modify repmgr.conf
 mkdir -p /data/repmgr/etc
@@ -110,8 +115,10 @@ EOF
 chown -R postgres:postgres /data/repmgr
 
 # 8. register node
-su -s /bin/bash postgres -c "repmgr -f /data/repmgr/etc/repmgr.conf $register_status register"
-su -s /bin/bash postgres -c "repmgr -f /data/repmgr/etc/repmgr.conf cluster show"
+# su -s /bin/bash postgres -c "repmgr -f /data/repmgr/etc/repmgr.conf $register_status register"
+sudo -u postgres repmgr -f /data/repmgr/etc/repmgr.conf $register_status register
+# su -s /bin/bash postgres -c "repmgr -f /data/repmgr/etc/repmgr.conf cluster show"
+sudo -u postgres repmgr -f /data/repmgr/etc/repmgr.conf cluster show
 
 # 9. psql -U repmgr
 # > select * from repmgr.nodes;
