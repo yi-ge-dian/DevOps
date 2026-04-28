@@ -99,12 +99,10 @@ host replication repmgr 0.0.0.0/24 md5
 EOF
 
 # 重新加载配置
-# su -s /bin/bash postgres -c "pg_ctl reload"
-sudo -u postgres pg_ctl reload
+sudo -iu postgres pg_ctl reload
 
-# 7. modify repmgr.conf
+# 创建 repmgr 配置文件目录
 mkdir -p /data/repmgr/etc
-
 cat > /data/repmgr/etc/repmgr.conf << EOF
 node_id = $node_id
 node_name = node_$node_id
@@ -113,12 +111,11 @@ data_directory = '/data/5432/data'
 pg_bindir = '/usr/local/pgsql/bin'
 EOF
 chown -R postgres:postgres /data/repmgr
+chmod 700 /data/repmgr
 
-# 8. register node
-# su -s /bin/bash postgres -c "repmgr -f /data/repmgr/etc/repmgr.conf $register_status register"
-sudo -u postgres repmgr -f /data/repmgr/etc/repmgr.conf $register_status register
-# su -s /bin/bash postgres -c "repmgr -f /data/repmgr/etc/repmgr.conf cluster show"
-sudo -u postgres repmgr -f /data/repmgr/etc/repmgr.conf cluster show
+# 注册节点
+sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf $register_status register
+sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf cluster show
 
-# 9. psql -U repmgr
-# > select * from repmgr.nodes;
+# 查看节点信息
+psql -c "select * from repmgr.nodes;"

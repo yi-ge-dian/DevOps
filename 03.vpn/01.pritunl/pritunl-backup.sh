@@ -74,7 +74,13 @@ if [[ $? -ne 0 ]]; then
 fi
 
 # 设置定时任务
-# 
-# 
-# 
+# crontab -e
+# 0 22 * * 5 /root/dongwenlong/pritunl-backup.sh >> /var/log/pritunl_backup.log 2>&1
+# chmod +x /root/dongwenlong/pritunl-backup.sh
 
+# 恢复
+# cd /data/pritunl/backup/
+# tar xvf xxx.tar.gz -C .
+# mv pritunl ../
+# mv mongodb ../
+# docker-compose up -d
