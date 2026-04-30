@@ -41,6 +41,7 @@ fi
 host_ip=$1
 node_id=$2
 register_status=$3
+host_port=5432
 
 # host_ip 需要作为传入的参数，如果不传入报错
 if [ -z "$host_ip" ]; then
@@ -93,7 +94,7 @@ psql -c "CREATE DATABASE repmgr OWNER repmgr;"
 psql -c "ALTER USER repmgr SET search_path TO repmgr, public;"
 
 # 修改 pg 白名单
-cat >> /data/5432/data/pg_hba.conf << EOF
+cat >> /data/$host_port/data/pg_hba.conf << EOF
 local repmgr repmgr md5
 host repmgr repmgr 127.0.0.1/32 md5
 host repmgr repmgr 0.0.0.0/0 md5
@@ -111,8 +112,8 @@ mkdir -p /data/repmgr/etc
 cat > /data/repmgr/etc/repmgr.conf << EOF
 node_id = $node_id
 node_name = node_$node_id
-conninfo = 'host=$host_ip port=5432 user=repmgr password=123456 dbname=repmgr connect_timeout=2'
-data_directory = '/data/5432/data'
+conninfo = 'host=$host_ip port=$host_port user=repmgr password=123456 dbname=repmgr connect_timeout=2'
+data_directory = '/data/$host_port/data'
 pg_bindir = '/usr/local/pgsql/bin'
 EOF
 chown -R postgres:postgres /data/repmgr
