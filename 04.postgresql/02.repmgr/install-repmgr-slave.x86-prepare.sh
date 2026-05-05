@@ -32,15 +32,13 @@ else
 fi
 
 # 使用说明：
-# ./install-repmgr-master-x86.sh <host_ip> <node_id> <register_status>
+# ./install-repmgr-slave-x86.sh <host_ip> <node_id> 
 # host_ip: 主机IP地址
 # node_id: 节点ID
-# register_status: 注册状态
-# ./install-repmgr-master-x86.sh 10.0.0.61 1 primary
+# ./install-repmgr-slave-x86.sh 10.0.0.62 2
 
 host_ip=$1
 node_id=$2
-register_status=$3
 host_port=5432
 
 # host_ip 需要作为传入的参数，如果不传入报错
@@ -56,13 +54,6 @@ if [ -z "$node_id" ]; then
     exit 1
 fi
 node_id=$2
-
-# register_status 需要作为传入的参数，如果不传入报错
-if [ -z "$register_status" ]; then
-    print_colored "$RED" "[Error] register_status is required"
-    exit 1
-fi
-register_status=$3
 
 # 下载 repmgr rpm 包
 # repmgr_15-5.3.3-1.rhel7.x86_64.rpm                 02-Jan-2024 18:05              284208
@@ -98,30 +89,26 @@ EOF
 chown -R postgres:postgres /data/repmgr
 chmod 700 /data/repmgr
 
-# 创建 repmgr 用户
-psql -c "CREATE USER repmgr WITH SUPERUSER LOGIN PASSWORD '123456';"
-# 创建 repmgr 数据库
-psql -c "CREATE DATABASE repmgr OWNER repmgr;"
-# 更改 repmgr schema
-psql -c "ALTER USER repmgr SET search_path TO repmgr, public;"
+# 备份从节点自己之前的数据文件
+systemctl stop postgresql$host_port
+# 更稳健的备份脚本
+backup_dir="/data/$host_port/backup"
+backup_name="data_backup_$(date +%Y%m%d_%H%M%S).tar.gz"
+data_dir="/data/$host_port/data"
 
-# 修改 pg 白名单
-cat >> /data/$host_port/data/pg_hba.conf << EOF
-local repmgr repmgr md5
-host repmgr repmgr 127.0.0.1/32 md5
-host repmgr repmgr 0.0.0.0/0 md5
+# 确保备份目录存在
+mkdir -p "$backup_dir"
 
-local replication repmgr md5
-host replication repmgr 127.0.0.1/32 md5
-host replication repmgr 0.0.0.0/0 md5
-EOF
+# 创建备份（排除临时文件和日志）
+tar -zcvf "$backup_dir/$backup_name" \
+    --exclude='postmaster.pid' \
+    -C "$data_dir" .
 
-# 重新加载配置
-sudo -iu postgres pg_ctl reload
-
-# 注册节点
-sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf $register_status register
-sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf cluster show
-
-# 查看节点信息
-psql -d repmgr -c "select * from repmgr.nodes;"
+if [ $? -eq 0 ]; then
+    print_colored "$GREEN" "备份成功，备份文件位于 $backup_dir/$backup_name"
+    # 清理旧备份（可选：保留最近7天）
+    find "$backup_dir" -name "data_backup_*.tar.gz" -mtime +7 -delete
+else
+    print_colored "$RED" "备份失败"
+    exit 1
+fi
