@@ -36,8 +36,11 @@ bash install-repmgr-slave-prepare-x86.sh 10.0.0.62 2
 su postgres
 cat > ~/.pgpass << EOF
 10.0.0.61:5432:repmgr:repmgr:123456
+10.0.0.61:5432:replication:repmgr:123456
 10.0.0.62:5432:repmgr:repmgr:123456
+10.0.0.62:5432:replication:repmgr:123456
 EOF
+cat ~/.pgpass
 chmod 600 ~/.pgpass
 exit
 ```
@@ -94,41 +97,55 @@ sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf -U repmgr -d repmgr clu
 psql -d repmgr -c "select * from repmgr.nodes;"
 ```
 
+61,62,63 配置 ssh 免密登录
+```shell
+su postgres
+ssh-keygen -t rsa
+ssh-copy-id -i ~/.ssh/id_rsa.pub postgres@10.0.0.61
+ssh-copy-id -i ~/.ssh/id_rsa.pub postgres@10.0.0.62
+ssh-copy-id -i ~/.ssh/id_rsa.pub postgres@10.0.0.63
+```
+
 4. 手动主从切换
 
 62 节点执行
 
 ```shell
+# 尝试切换
 sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby switchover --siblings-follow --dry-run --force-rewind
 
+# 切换后，62 节点变为主库，61 节点变为备库
+sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby switchover --siblings-follow --force-rewind
 
-visudo -f /etc/sudoers.d/postgres-service
-
-Defaults:postgres !requiretty
-postgres ALL = NOPASSWD: /usr/bin/systemctl start postgresql5432, \
-    /usr/bin/systemctl stop postgresql5432, \
-    /usr/bin/systemctl restart postgresql5432, \
-    /usr/bin/systemctl reload postgresql5432
-
-  
-/data/repmgr/etc/repmgr.conf
-service_start_command   = 'sudo systemctl start postgresql5432'
-service_stop_command    = 'sudo systemctl stop postgresql5432'
-service_restart_command = 'sudo systemctl restart postgresql5432'
-service_reload_command  = 'sudo systemctl reload postgresql5432'
-
+# 62 建库建表，插入数据
+createdb test
+psql -d test -c "create table t1(id int);"
+psql -d test -c "insert into t1 values(1);"
 ```
 
-
-
-
+61 节点执行
 
 ```shell
-sudo -iu postgres psql -h 10.0.0.61 -U repmgr -d repmgr -c "DELETE FROM repmgr.nodes WHERE node_id=2;"
-
-sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby clone -h 10.0.0.61 -p 5432 -U repmgr -d repmgr --force
+# 查询数据
+psql -d test -c "select * from t1;"
 ```
 
+61 节点执行
 
+```shell
+# 尝试切换
+sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby switchover --siblings-follow --dry-run --force-rewind
 
-sudo -iu postgres   repmgr -f /data/repmgr/etc/repmgr.conf node service --list-actions --action=start
+# 切换后，61 节点变为主库，62 节点变为备库
+sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby switchover --siblings-follow --force-rewind
+
+# 61 插入数据
+psql -d test -c "insert into t1 values(2);"
+```
+
+62 节点执行
+
+```shell
+# 查询数据
+psql -d test -c "select * from t1;"
+```

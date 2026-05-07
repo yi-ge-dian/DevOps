@@ -85,9 +85,20 @@ node_name = node_$node_id
 conninfo = 'host=$host_ip port=$host_port user=repmgr password=123456 dbname=repmgr connect_timeout=2'
 data_directory = '/data/$host_port/data'
 pg_bindir = '/usr/local/pgsql/bin'
+service_start_command   = 'sudo systemctl start postgresql5432'
+service_stop_command    = 'sudo systemctl stop postgresql5432'
+service_restart_command = 'sudo systemctl restart postgresql5432'
+service_reload_command  = 'sudo systemctl reload postgresql5432'
 EOF
 chown -R postgres:postgres /data/repmgr
 chmod 700 /data/repmgr
+cat > /etc/sudoers.d/postgres-service << EOF
+Defaults:postgres !requiretty
+postgres ALL = NOPASSWD: /usr/bin/systemctl start postgresql5432, \
+    /usr/bin/systemctl stop postgresql5432, \
+    /usr/bin/systemctl restart postgresql5432, \
+    /usr/bin/systemctl reload postgresql5432
+EOF
 
 # 备份从节点自己之前的数据文件
 systemctl stop postgresql$host_port
