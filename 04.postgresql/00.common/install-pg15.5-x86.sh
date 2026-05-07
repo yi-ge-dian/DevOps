@@ -130,6 +130,7 @@ idle_session_timeout = 300000
 wal_level = replica
 max_wal_senders = 10
 wal_sender_timeout = 60s
+wal_log_hints = on
 archive_mode = on
 archive_command = 'test ! -f /data/$Port/archive/%f && cp %p /data/$Port/archive/%f'
 EOF

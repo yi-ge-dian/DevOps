@@ -32,7 +32,6 @@ else
 fi
 
 Redis_version="7.4.8"
-Port="6379"
 
 # 优化系统参数
 cat > /etc/sysctl.conf << EOF
@@ -50,7 +49,7 @@ chmod +x /etc/rc.d/rc.local
 print_colored "$GREEN" "[Success] Transparent_hugepage set"
 
 # 判断是否下载了源码包
-cd /usr/local/
+cd /usr/local/src
 if [[ -f "redis-${Redis_version}.tar.gz" ]]; then
     print_colored "$GREEN" "[Success] Redis tar already exists"
 else
@@ -65,9 +64,15 @@ fi
 
 # 安装 redis
 tar xvf redis-${Redis_version}.tar.gz
-ln -s redis-${Redis_version} redis
-cd /usr/local/redis
-make -j "$(nproc)" USE_SYSTEMD=yes && make install
+cd /usr/local/src/redis-${Redis_version}
+make -j "$(nproc)" USE_SYSTEMD=yes
+if [[ $? -ne 0 ]]; then
+    print_colored "$RED" "[Error] Failed to make Redis"
+    exit 1
+fi
+print_colored "$GREEN" "[Success] Redis made"
+
+make install PREFIX=/usr/local/redis
 if [[ $? -ne 0 ]]; then
     print_colored "$RED" "[Error] Failed to install Redis"
     exit 1
@@ -75,7 +80,7 @@ fi
 print_colored "$GREEN" "[Success] Redis installed"
 
 # 查看 redis 版本
-cd /usr/local/
+cd /usr/local/redis/bin
 redis-server -v
 
 # 配置环境变量
@@ -85,33 +90,33 @@ EOF
 source /etc/profile
 
 # 配置目录
-mkdir -pv /data/$Port/{data,etc,log,run,backup}
+mkdir -pv /data/6379/{data,etc,log,run,backup}
+cp -a /usr/local/src/redis-${Redis_version}/redis.conf /data/6379/etc/redis.conf
 useradd -r -s /sbin/nologin redis
-chown -R redis.redis /data/$Port/
+chown -R redis.redis /data/6379/
 chown -R redis.redis /usr/local/redis/
-chmod 700 /data/$Port
+chmod 700 /data/6379
 
 # 配置文件
-cp -a /usr/local/redis/redis.conf /data/$Port/etc/redis.conf
-cat >> /data/$Port/etc/redis.conf << EOF
+cat >> /data/6379/etc/redis.conf << EOF
 ####################################### basic configuration
 bind 0.0.0.0
-port  $Port
-unixsocket /data/$Port/run/redis.sock
+port 6379
+unixsocket /data/6379/run/redis.sock
 supervised systemd
-dir /data/$Port/data
-pidfile /data/$Port/run/redis.pid
-logfile "/data/$Port/log/redis.log"
+dir /data/6379/data
+pidfile /data/6379/run/redis.pid
+logfile "/data/6379/log/redis.log"
 ####################################### slow log configuration
 slowlog-log-slower-than 100000
 slowlog-max-len 128
 ####################################### connection configuration
 maxclients 10000
 requirepass 123456
-maxmemory 1024MB
+maxmemory 16gb
 ######################################## persistence configuration
 appendonly yes
-appendfilename "appendonly-$Port.aof"
+appendfilename "appendonly-6379.aof"
 appendfsync everysec
 no-appendfsync-on-rewrite yes
 auto-aof-rewrite-percentage 100
@@ -126,13 +131,13 @@ EOF
 print_colored "$GREEN" "[Success] Redis conf configured"
 
 # 配置 systemd
-cat > /usr/lib/systemd/system/redis$Port.service << EOF
+cat > /usr/lib/systemd/system/redis6379.service << EOF
 [Unit]
 Description=Redis Server
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/redis-server /data/$Port/etc/redis.conf
+ExecStart=/usr/local/redis/bin/redis-server /data/6379/etc/redis.conf
 Type=notify
 User=redis
 Group=redis
@@ -148,12 +153,12 @@ print_colored "$GREEN" "[Success] Redis systemd service configured"
 
 # 启动 redis
 systemctl daemon-reload
-systemctl start redis${Port}
+systemctl start redis6379
 if [[ $? -ne 0 ]]; then
     print_colored "$RED" "[Error] Failed to start Redis service"
     exit 1
 fi
-systemctl enable redis${Port}
+systemctl enable redis6379
 if [[ $? -ne 0 ]]; then
     print_colored "$RED" "[Error] Failed to enable Redis service"
     exit 1
@@ -161,4 +166,4 @@ fi
 print_colored "$GREEN" "[Success] Redis service started and enabled on boot"
 
 # 查看 redis 状态
-systemctl status redis${Port}
+systemctl status redis6379

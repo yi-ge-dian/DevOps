@@ -94,3 +94,41 @@ sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf -U repmgr -d repmgr clu
 psql -d repmgr -c "select * from repmgr.nodes;"
 ```
 
+4. 手动主从切换
+
+62 节点执行
+
+```shell
+sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby switchover --siblings-follow --dry-run --force-rewind
+
+
+visudo -f /etc/sudoers.d/postgres-service
+
+Defaults:postgres !requiretty
+postgres ALL = NOPASSWD: /usr/bin/systemctl start postgresql5432, \
+    /usr/bin/systemctl stop postgresql5432, \
+    /usr/bin/systemctl restart postgresql5432, \
+    /usr/bin/systemctl reload postgresql5432
+
+  
+/data/repmgr/etc/repmgr.conf
+service_start_command   = 'sudo systemctl start postgresql5432'
+service_stop_command    = 'sudo systemctl stop postgresql5432'
+service_restart_command = 'sudo systemctl restart postgresql5432'
+service_reload_command  = 'sudo systemctl reload postgresql5432'
+
+```
+
+
+
+
+
+```shell
+sudo -iu postgres psql -h 10.0.0.61 -U repmgr -d repmgr -c "DELETE FROM repmgr.nodes WHERE node_id=2;"
+
+sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby clone -h 10.0.0.61 -p 5432 -U repmgr -d repmgr --force
+```
+
+
+
+sudo -iu postgres   repmgr -f /data/repmgr/etc/repmgr.conf node service --list-actions --action=start
