@@ -106,13 +106,13 @@ ssh-copy-id -i ~/.ssh/id_rsa.pub postgres@10.0.0.62
 ssh-copy-id -i ~/.ssh/id_rsa.pub postgres@10.0.0.63
 ```
 
-4. 手动主从切换
+4. switchover 正常手动主从切换
 
 62 节点执行
 
 ```shell
 # 尝试切换
-sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby switchover --siblings-follow --dry-run --force-rewind
+sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby switchover --siblings-follow --force-rewind --dry-run
 
 # 切换后，62 节点变为主库，61 节点变为备库
 sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby switchover --siblings-follow --force-rewind
@@ -134,7 +134,7 @@ psql -d test -c "select * from t1;"
 
 ```shell
 # 尝试切换
-sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby switchover --siblings-follow --dry-run --force-rewind
+sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby switchover --siblings-follow --force-rewind --dry-run
 
 # 切换后，61 节点变为主库，62 节点变为备库
 sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby switchover --siblings-follow --force-rewind
@@ -149,3 +149,144 @@ psql -d test -c "insert into t1 values(2);"
 # 查询数据
 psql -d test -c "select * from t1;"
 ```
+
+5. failover 异常手动主从切换
+
+61 节点执行
+
+```shell
+# 停止主库
+systemctl stop postgresql5432
+```
+
+62 节点执行
+
+```shell
+# 提升为主库
+sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf --siblings-follow standby promote
+
+
+# 插入数据
+psql -d test -c "insert into t1 values(3);"
+```
+
+61 节点恢复
+```shell
+# 成为 62 的从库
+sudo -iu postgres repmgr -h 10.0.0.62 -U repmgr -d repmgr -f /data/repmgr/etc/repmgr.conf node rejoin --force-rewind --dry-run
+sudo -iu postgres repmgr -h 10.0.0.62 -U repmgr -d repmgr -f /data/repmgr/etc/repmgr.conf node rejoin --force-rewind
+
+# 查询数据
+psql -d test -c "select * from t1;"
+```
+
+将 61 节点恢复为主库，switchover 到 61 节点
+
+```shell
+# 61 尝试切换
+sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby switchover --siblings-follow --force-rewind --dry-run
+
+# 切换后，61 节点变为主库，62 节点变为备库
+sudo -iu postgres repmgr -f /data/repmgr/etc/repmgr.conf standby switchover --siblings-follow --force-rewind
+```
+
+6. failover 异常自动主从切换
+
+```shell
+# 1. 两台主从都启用 repmgr
+echo "shared_preload_libraries = 'repmgr'" >> /data/5432/data/postgresql.conf
+systemctl restart postgresql5432
+
+# 2. 两台主从都修改配置
+cat >> /data/repmgr/etc/repmgr.conf << 'EOF'
+monitoring_history = yes
+monitor_interval_secs = 5
+failover = automatic
+reconnect_attempts = 6
+reconnect_interval = 5
+promote_command = '/usr/local/pgsql/bin/repmgr -f /data/repmgr/etc/repmgr.conf --siblings-follow --log-to-file standby promote'
+follow_command = '/usr/local/pgsql/bin/repmgr -f /data/repmgr/etc/repmgr.conf standby follow --log-to-file --upstream-node-id=%n'
+log_level = INFO
+log_status_interval = 120
+log_file = '/data/repmgr/log/repmgr.log'
+repmgrd_pid_file = '/data/repmgr/run/repmgr.pid'
+repmgrd_service_start_command = '/usr/local/pgsql/bin/repmgrd -f /data/repmgr/etc/repmgr.conf --daemonize'
+repmgrd_service_stop_command = 'kill `cat /data/repmgr/run/repmgr.pid`'
+EOF
+mkdir -pv /data/repmgr/{log,run}
+touch /data/repmgr/log/repmgr.log
+chown -R postgres:postgres /data/repmgr/
+
+# 3. 两台主从都轮转日志
+cat >> /etc/logrotate.conf << EOF
+/data/repmgr/log/repmgr.log {
+    missingok
+    compress
+    rotate 30
+    daily
+    dateext
+    create 0644 postgres postgres
+}
+EOF
+
+# 4. 两台主从都启动后台
+cat > /etc/systemd/system/repmgrd.service << 'EOF'
+[Unit]
+Description=repmgr daemon
+After=network.target postgresql5432.service
+Wants=postgresql5432.service
+
+[Service]
+Type=forking
+User=postgres
+Group=postgres
+PIDFile=/data/repmgr/run/repmgr.pid
+ExecStart=/usr/local/pgsql/bin/repmgr -f /data/repmgr/etc/repmgr.conf daemon start
+ExecStop=/usr/local/pgsql/bin/repmgr -f /data/repmgr/etc/repmgr.conf daemon stop
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl start repmgrd
+systemctl enable repmgrd
+systemctl status repmgrd
+
+# 5. 61 节点停止
+systemctl stop postgresql5432
+
+# 6. 62 节点查看日志
+tail -f /data/repmgr/log/repmgr.log
+# 插入数据
+psql -d test -c "insert into t1 values(4);"
+
+# 7. 61 节点恢复
+# 成为 62 的从库
+sudo -iu postgres repmgr -h 10.0.0.62 -U repmgr -d repmgr -f /data/repmgr/etc/repmgr.conf node rejoin --force-rewind --dry-run
+sudo -iu postgres repmgr -h 10.0.0.62 -U repmgr -d repmgr -f /data/repmgr/etc/repmgr.conf node rejoin --force-rewind
+
+# 查询数据
+systemctl start postgresql5432
+psql -d test -c "select * from t1;"
+
+# 8. 62 节点停止
+systemctl stop postgresql5432
+
+# 9. 61 节点查看日志
+tail -f /data/repmgr/log/repmgr.log
+# 插入数据
+psql -d test -c "insert into t1 values(5);"
+
+# 10. 62 节点恢复
+# 成为 61 的从库
+sudo -iu postgres repmgr -h 10.0.0.61 -U repmgr -d repmgr -f /data/repmgr/etc/repmgr.conf node rejoin --force-rewind --dry-run
+sudo -iu postgres repmgr -h 10.0.0.61 -U repmgr -d repmgr -f /data/repmgr/etc/repmgr.conf node rejoin --force-rewind
+
+# 查询数据
+systemctl start postgresql5432
+psql -d test -c "select * from t1;"
+```
+
