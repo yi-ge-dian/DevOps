@@ -114,6 +114,7 @@ slowlog-max-len 128
 maxclients 10000
 requirepass 123456
 maxmemory 16gb
+maxmemory-policy volatile-lru
 ######################################## persistence configuration
 appendonly yes
 appendfilename "appendonly-6379.aof"
