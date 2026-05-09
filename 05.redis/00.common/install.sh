@@ -65,6 +65,7 @@ fi
 # 安装 redis
 tar xvf redis-${Redis_version}.tar.gz
 cd /usr/local/src/redis-${Redis_version}
+yum install -y systemd-devel
 make -j "$(nproc)" USE_SYSTEMD=yes
 if [[ $? -ne 0 ]]; then
     print_colored "$RED" "[Error] Failed to make Redis"

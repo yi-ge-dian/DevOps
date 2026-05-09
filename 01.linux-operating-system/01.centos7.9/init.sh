@@ -61,7 +61,8 @@ yum makecache fast
 print_colored "$GREEN" "[Success] Software sources updated"
 
 # 安装必要的工具
-yum install -y vim wget net-tools lsof iotop chrony unzip tree gcc systemd-devel make perl gcc-c++
+yum install -y vim wget net-tools lsof iotop chrony unzip tree gcc make perl gcc-c++ cmake
+
 if [[ $? -ne 0 ]]; then
     print_colored "$RED" "[Error] Failed to install necessary tools"
     exit 1
