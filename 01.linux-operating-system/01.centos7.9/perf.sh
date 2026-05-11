@@ -41,11 +41,6 @@ vm.dirty_ratio = 10
 vm.dirty_background_ratio = 5
 # 减少系统使用交换分区的倾向
 vm.swappiness = 5
-###############################################################  Network Optimization ################################################################
-# ARP/邻居表缓存大小优化 (适用于高并发/容器环境)
-net.ipv4.neigh.default.gc_thresh1 = 8192
-net.ipv4.neigh.default.gc_thresh2 = 32768
-net.ipv4.neigh.default.gc_thresh3 = 65536
 EOF
 sysctl -p
 if [[ $? -ne 0 ]]; then
