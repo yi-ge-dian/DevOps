@@ -8,19 +8,18 @@ vim /etc/keepalived/keepalived.conf
 # master
 ! Configuration file for keepalived
 global_defs {
-   router_id KP_node_01
+   router_id pg_node_1
 }
 
 vrrp_script check_pg {
     script /etc/keepalived/check_pg.sh
     interval 1
     timeout 30
-    weight 10
 }
 
 vrrp_instance VI_1 {
     state BACKUP
-    interface enp1s0
+    interface eth0
     virtual_router_id 51
     priority 100
     nopreempt
@@ -30,7 +29,7 @@ vrrp_instance VI_1 {
         auth_pass 123456
     }
     virtual_ipaddress {
-        172.18.27.202
+        172.18.27.200
     }
     track_script {
         check_pg
@@ -40,21 +39,20 @@ vrrp_instance VI_1 {
 # slave
 ! Configuration file for keepalived
 global_defs {
-   router_id KP_node_02
+   router_id pg_node_2
 }
 
 vrrp_script check_pg {
     script /etc/keepalived/check_pg.sh
     interval 1
     timeout 30
-    weight 10
 }
 
 vrrp_instance VI_1 {
     state BACKUP
-    interface enp1s0
+    interface eth0
     virtual_router_id 51
-    priority 100
+    priority 90
     nopreempt
     advert_int 1
     authentication {
@@ -62,25 +60,22 @@ vrrp_instance VI_1 {
         auth_pass 123456
     }
     virtual_ipaddress {
-        172.18.27.202
+        172.18.27.200
     }
     track_script {
         check_pg
   }
 }
 
-
 vim /etc/keepalived/check_pg.sh
+
 #!/bin/bash
-IS_RECOVERY=$(sudo -iu postgres -c psql -tAc 'SELECT pg_is_in_recovery();' 2>/dev/null)
-if [ "$IS_RECOVERY" = "f" ]; then
-    exit 0      # 是主库，返回成功，keepalived 增加 weight
-else
-    exit 1      # 是备库或查询失败，返回失败，keepalived 降低 weight
+count=`ps -ef | grep -w '/usr/local/pgsql/bin/postmaster' | grep -v grep | wc -l`
+if [ ${count} -eq 0 ];then
+  systemctl stop keepalived
 fi
 
+chmod +x /etc/keepalived/check_pg.sh
 systemctl daemon-reload
 systemctl restart keepalived
 systemctl enable keepalived
-
-ping 172.18.27.202

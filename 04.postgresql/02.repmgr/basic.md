@@ -49,9 +49,9 @@ exit
 
 ```shell
 # 从 61 节点克隆数据
+rm -rf /data/5432/data/*
 sudo -iu postgres repmgr -h 10.0.0.61 -U repmgr -d repmgr -f /data/repmgr/etc/repmgr.conf standby clone --dry-run
 sudo -iu postgres repmgr -h 10.0.0.61 -U repmgr -d repmgr -f /data/repmgr/etc/repmgr.conf standby clone
-# 123456 是 repmgr.conf 中的 password
 
 # 注册为备库
 systemctl start postgresql5432
@@ -99,6 +99,7 @@ psql -d repmgr -c "select * from repmgr.nodes;"
 
 61,62,63 配置 ssh 免密登录
 ```shell
+echo 123456 | passwd --stdin postgres
 su postgres
 ssh-keygen -t rsa
 ssh-copy-id -i ~/.ssh/id_rsa.pub postgres@10.0.0.61
@@ -269,7 +270,6 @@ sudo -iu postgres repmgr -h 10.0.0.62 -U repmgr -d repmgr -f /data/repmgr/etc/re
 sudo -iu postgres repmgr -h 10.0.0.62 -U repmgr -d repmgr -f /data/repmgr/etc/repmgr.conf node rejoin --force-rewind
 
 # 查询数据
-systemctl start postgresql5432
 psql -d test -c "select * from t1;"
 
 # 8. 62 节点停止
@@ -286,7 +286,6 @@ sudo -iu postgres repmgr -h 10.0.0.61 -U repmgr -d repmgr -f /data/repmgr/etc/re
 sudo -iu postgres repmgr -h 10.0.0.61 -U repmgr -d repmgr -f /data/repmgr/etc/repmgr.conf node rejoin --force-rewind
 
 # 查询数据
-systemctl start postgresql5432
 psql -d test -c "select * from t1;"
 ```
 

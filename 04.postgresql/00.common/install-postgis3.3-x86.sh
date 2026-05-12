@@ -56,7 +56,7 @@ else
     wget https://download.postgresql.org/pub/repos/yum/15/redhat/rhel-7-x86_64/postgresql15-contrib-15.5-1PGDG.rhel7.x86_64.rpm
 fi
 
-yum install -y python36-libs
+yum install -y python36-libs libxslt
 rpm -ivh postgresql15-contrib-15.5-1PGDG.rhel7.x86_64.rpm --nosignature
 yum install -y postgis33_15
 

@@ -133,6 +133,7 @@ wal_sender_timeout = 60s
 wal_log_hints = on
 archive_mode = on
 archive_command = 'test ! -f /data/$Port/archive/%f && cp %p /data/$Port/archive/%f'
+wal_keep_size = '2GB'
 EOF
 
 # 系统服务启动
