@@ -55,18 +55,18 @@ if [[ $? -eq 0 ]]; then
 fi
 
 # 二进制安装
-cd /usr/local
-if [[ -f mysql-8.0.45-linux-glibc2.17-x86_64.tar.xz ]]; then
+cd /usr/local || exit
+if [[ -f mysql-8.0.46-linux-glibc2.17-$arch.tar.xz ]]; then
     print_colored "$GREEN" "[Success] MySQL is downloaded!"
 else
     print_colored "$GREEN" "[Success] Downloading MySQL..."
-    wget https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.45-linux-glibc2.17-$arch.tar.xz
+    wget https://cdn.mysql.com//Downloads/MySQL-8.0/mysql-8.0.46-linux-glibc2.17-$arch.tar.xz
     print_colored "$GREEN" "[Success] Downloading completed!"
 fi
 
 # 解压
-tar xvf mysql-8.0.45-linux-glibc2.17-$arch.tar.xz
-ln -s mysql-8.0.45-linux-glibc2.17-$arch mysql
+tar xvf mysql-8.0.46-linux-glibc2.17-$arch.tar.xz
+ln -s mysql-8.0.46-linux-glibc2.17-$arch mysql
 
 # 配置环境变量
 cat >> /etc/profile << 'EOF'
@@ -180,22 +180,22 @@ activate_all_roles_on_login = on
 #------------------------------------------------------------
 #mgr parameters
 #------------------------------------------------------------
-# plugin_dir = /usr/local/mysql/lib/plugin
-# relay_log = /data/$Port/log/relaylog/mysql-relaylog
-# relay_log_index = /data/$Port/log/relaylog/mysql-relaylog.index
-# log_replica_updates = on
-# loose-group_replication_local_address = "$IP:$MGR_Port"
-# loose-plugin_load_add = "mysql_clone.so"
-# loose-plugin_load_add = "group_replication.so"
-# loose-group_replication_group_name = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"
-# loose-group_replication_group_seeds = "$IP:$MGR_Port,$groupIP_1:$MGR_Port,$groupIP_2:$MGR_Port"
-# loose-group_replication_start_on_boot = on
-# loose-group_replication_bootstrap_group = off
-# loose-group_replication_exit_state_action = READ_ONLY
-# loose-group_replication_flow_control_mode = "DISABLED"
-# loose-group_replication_single_primary_mode = on
-# loose-group_replication_recovery_get_public_key = on
-# report-host = $IP
+#plugin_dir = /usr/local/mysql/lib/plugin
+#relay_log = /data/$Port/log/relaylog/mysql-relaylog
+#relay_log_index = /data/$Port/log/relaylog/mysql-relaylog.index
+#log_replica_updates = on
+#loose-group_replication_local_address = "$IP:$MGR_Port"
+#loose-plugin_load_add = "mysql_clone.so"
+#loose-plugin_load_add = "group_replication.so"
+#loose-group_replication_group_name = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"
+#loose-group_replication_group_seeds = "$IP:$MGR_Port,$groupIP_1:$MGR_Port,$groupIP_2:$MGR_Port"
+#loose-group_replication_start_on_boot = on
+#loose-group_replication_bootstrap_group = off
+#loose-group_replication_exit_state_action = READ_ONLY
+#loose-group_replication_flow_control_mode = "DISABLED"
+#loose-group_replication_single_primary_mode = on
+#loose-group_replication_recovery_get_public_key = on
+#report-host = $IP
 EOF
 
 # 启动服务
@@ -242,3 +242,7 @@ EOF
 
 #source /etc/profile
 #mysqladmin -uroot password '123456'
+#CREATE USER 'root'@'%' IDENTIFIED BY '123456';
+#GRANT ALL ON *.* TO 'root'@'%' WITH GRANT OPTION;
+#flush privileges;
+#SELECT user,host,plugin FROM mysql.user;
