@@ -3,11 +3,6 @@
 #软件类型：数据库
 #软件名称：KingbaseES_安装包
 
-# 创建 kingbase 用户
-useradd -m -d /home/kingbase -s /bin/bash kingbase
-echo "123456" | passwd --stdin kingbase
-cp -a /etc/skel/.bash* /home/kingbase/
-
 # 创建目录
 mkdir -pv /usr/local/Kingbase/ES/V8
 mkdir -pv /data/54321/{data,backup,archive}

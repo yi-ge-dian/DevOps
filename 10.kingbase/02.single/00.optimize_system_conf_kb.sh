@@ -22,6 +22,7 @@ createKingbaseUserIfNotExist(){
   then
     useradd -m -U kingbase
     echo kingbase|passwd --stdin kingbase
+    cp -a /etc/skel/.bash* /home/kingbase/
     echo "kingbase user is created."
   fi
 }
