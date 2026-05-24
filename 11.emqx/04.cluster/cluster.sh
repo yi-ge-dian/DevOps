@@ -17,15 +17,6 @@ docker volume create --name emqx-log
 docker volume create --name emqx-etc
 #/data/docker/volumes/emqx-etc/_data
 docker volume ls
-#todo 是否需要持久化
-#todo 消息是否有过期时间
-# /etc/emqx.conf
-# 启动插件：emqx_auth_mnesia
-#todo allow_anonymous = false （关闭匿名登录） acl_nomatch = deny( 无 acl 匹配的时候禁止)
-# vim  emqx_auth_mnesia.conf 配置第一个普通用户
-#auth.user.1.username = root
-#auth.user.1.password = 123456
-
 
 cat > /data/emqx/docker-compose.yml <<EOF
 version: '3'
@@ -62,10 +53,7 @@ volumes:
     external: true
 EOF
 
-
-
 docker-compose up -d
-docker exec -it emqx1 sh -c "emqx ctl cluster status"
 docker-compose down
 
 #emqx02	10.0.0.72

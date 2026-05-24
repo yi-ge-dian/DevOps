@@ -242,7 +242,4 @@ EOF
 
 #source /etc/profile
 #mysqladmin -uroot password '123456'
-#CREATE USER 'root'@'%' IDENTIFIED BY '123456';
-#GRANT ALL ON *.* TO 'root'@'%' WITH GRANT OPTION;
-#flush privileges;
 #SELECT user,host,plugin FROM mysql.user;
