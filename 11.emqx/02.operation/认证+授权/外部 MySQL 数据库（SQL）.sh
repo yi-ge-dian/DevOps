@@ -1,13 +1,16 @@
 # 权限控制：
 #
 # 1. 修改配置文件
-vim /data/docker/volumes/emqx-etc/_data/emqx.conf
-# 关闭匿名登录
-# allow_anonymous = false
-# acl_nomatch = deny( 无 acl 匹配的时候禁止)
+cat >> /data/docker/volumes/emqx-etc/_data/emqx.conf <<EOF
+allow_anonymous = false
+acl_nomatch = deny
+listener.tcp.external.proxy_protocol = on
+EOF
+tail -n 10 /data/docker/volumes/emqx-etc/_data/emqx.conf
 
-vim /data/docker/volumes/emqx-etc/_data/acl.conf
-{deny, all}
+#  {allow, all}. 改为 {deny, all}
+sed -i 's/{allow, all}./{deny, all}./g' /data/docker/volumes/emqx-etc/_data/acl.conf
+tail -n 10 /data/docker/volumes/emqx-etc/_data/acl.conf
 
 # 2.部署数据库(参考数据库部署脚本)，创建数据库用户，注意修改ip地址，密码
 mysql -u root -p123456
