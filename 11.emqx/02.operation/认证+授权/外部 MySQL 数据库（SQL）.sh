@@ -1,24 +1,42 @@
 # 权限控制：
 #
-# 1. 修改配置文件
+# 1. 禁止匿名登录
 cat >> /data/docker/volumes/emqx-etc/_data/emqx.conf <<EOF
 allow_anonymous = false
 acl_nomatch = deny
 listener.tcp.external.proxy_protocol = on
 EOF
-tail -n 10 /data/docker/volumes/emqx-etc/_data/emqx.conf
 
+# 2. 默认拒绝订阅发布
 #  {allow, all}. 改为 {deny, all}
 sed -i 's/{allow, all}./{deny, all}./g' /data/docker/volumes/emqx-etc/_data/acl.conf
-tail -n 10 /data/docker/volumes/emqx-etc/_data/acl.conf
 
-# 2.部署数据库(参考数据库部署脚本)，创建数据库用户，注意修改ip地址，密码
+# 3. 数据库修改
+vim /data/docker/volumes/emqx-etc/_data/plugins/emqx_auth_mysql.conf
+## MySQL 服务器地址
+auth.mysql.server = 10.0.0.51:3306
+
+## MySQL 用户名
+auth.mysql.username = emqx
+
+## MySQL 密码
+auth.mysql.password = 123456
+
+## MySQL 数据库名
+auth.mysql.database = mqtt
+
+## 连接池大小
+auth.mysql.pool_size = 8
+
+# 4.重启容器
+docker-compose restart
+
+# 5.部署数据库(参考数据库部署脚本)，创建数据库用户，注意修改ip地址，密码
 mysql -u root -p123456
 create database mqtt;
 create user 'emqx'@'%' identified by '123456';
 grant all privileges on mqtt.* to 'emqx'@'%';
 flush privileges;
-
 use mqtt;
 
 # 认证表
@@ -48,38 +66,15 @@ CREATE TABLE `mqtt_acl` (
   INDEX (clientid)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-# 3.修改外部数据库地址
-vim /data/docker/volumes/emqx-etc/_data/plugins/emqx_auth_mysql.conf
-## MySQL 服务器地址
-auth.mysql.server = 10.0.0.51:3306
-
-## MySQL 用户名
-auth.mysql.username = emqx
-
-## MySQL 密码
-auth.mysql.password = 123456
-
-## MySQL 数据库名
-auth.mysql.database = mqtt
-
-## 连接池大小
-auth.mysql.pool_size = 8
-
-## 用户查询
-auth.mysql.acl_query = SELECT allow, ipaddr, username, clientid, access, topic FROM mqtt_acl WHERE ipaddr = '%a' or username = '%u' or username = '$all' or clientid = '%c' ORDER BY allow DESC
-
-# 4.重启容器
-docker-compose restart
-
-# 5.dashboard 启用外部数据库认证权限
-# 6.创建用户
+# 6.dashboard 启用外部数据库认证权限
+# 7.创建用户
 insert into mqtt_user (username, password, salt, is_superuser, created) values ('emqx_u', sha2('123456', 256), null, 0, now());
-# 7.删除用户
+# 8.删除用户
 delete from mqtt.mqtt_user where username='emqx_u';
 
-# 8.创建权限，emqx_u 可以订阅 emqx/#，发布 emqx/pub，发布订阅 emqx/subpub, 其他的都拒绝
+# 9.创建权限，emqx_u 可以订阅 emqx/#，发布 emqx/pub，发布订阅 emqx/subpub, 其他的都拒绝
 insert into mqtt_acl (allow, ipaddr, username, clientid, access, topic) values (1, null, 'emqx_u', null, 1, 'sub');
 insert into mqtt_acl (allow, ipaddr, username, clientid, access, topic) values (1, null, 'emqx_u', null, 2, 'pub');
 insert into mqtt_acl (allow, ipaddr, username, clientid, access, topic) values (1, null, 'emqx_u', null, 3, 'subpub');
-# 9.删除权限
+# 10.删除权限
 delete from mqtt_acl where username = 'emqx_u';
