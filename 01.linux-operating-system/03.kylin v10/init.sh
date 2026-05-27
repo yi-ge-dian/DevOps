@@ -52,7 +52,7 @@ fi
 
 # 更新软件源
 yum clean all
-yum makecache fast
+yum makecache
 
 # 安装必要的工具
 yum install -y vim wget net-tools lsof iotop chrony unzip tree gcc make perl gcc-c++ cmake

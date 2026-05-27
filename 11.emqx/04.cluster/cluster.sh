@@ -1,13 +1,10 @@
-docker pull emqx/emqx:4.4.3
-
 #节点	IP
 #emqx01	10.0.0.71
 #emqx02	10.0.0.72
 #emqx03	10.0.0.73
 
-#nginx 负载均衡
-
 #emqx01	10.0.0.71
+docker pull emqx/emqx:4.4.3
 mkdir -pv /data/emqx
 cd /data/emqx || exit
 docker volume create --name emqx-data
@@ -52,9 +49,9 @@ volumes:
   emqx-etc:
     external: true
 EOF
-
 docker-compose up -d
 docker-compose down
+# 去认证+授权/外部 MySQL 数据库 配置
 
 #emqx02	10.0.0.72
 mkdir -pv /data/emqx
@@ -70,13 +67,13 @@ cat > /data/emqx/docker-compose.yml <<EOF
 version: '3'
 
 services:
-  emqx1:
+  emqx2:
     image: emqx/emqx:4.4.3
     container_name: emqx2
     environment:
       - EMQX_NAME=emqx02
       - EMQX_HOST=10.0.0.72
-      - EMQX_NODE_NAME=emqx01@10.0.0.72
+      - EMQX_NODE_NAME=emqx02@10.0.0.72
       - EMQX_CLUSTER__DISCOVERY=static
       - EMQX_CLUSTER__STATIC__SEEDS=emqx01@10.0.0.71,emqx02@10.0.0.72,emqx03@10.0.0.73
     network_mode: "host"
@@ -100,8 +97,13 @@ volumes:
   emqx-etc:
     external: true
 EOF
+docker-compose up -d
+docker-compose down
+# 去认证+授权/外部 MySQL 数据库 配置
 
-#emqx03	10.0.0.73
+
+#emqx03 10.0.0.73
+docker pull emqx/emqx:4.4.3
 mkdir -pv /data/emqx
 cd /data/emqx || exit
 docker volume create --name emqx-data
@@ -116,13 +118,13 @@ cat > /data/emqx/docker-compose.yml <<EOF
 version: '3'
 
 services:
-  emqx1:
+  emqx3:
     image: emqx/emqx:4.4.3
     container_name: emqx3
     environment:
       - EMQX_NAME=emqx03
       - EMQX_HOST=10.0.0.73
-      - EMQX_NODE_NAME=emqx01@10.0.0.73
+      - EMQX_NODE_NAME=emqx03@10.0.0.73
       - EMQX_CLUSTER__DISCOVERY=static
       - EMQX_CLUSTER__STATIC__SEEDS=emqx01@10.0.0.71,emqx02@10.0.0.72,emqx03@10.0.0.73
     network_mode: "host"
@@ -146,3 +148,6 @@ volumes:
   emqx-etc:
     external: true
 EOF
+docker-compose up -d
+docker-compose down
+# 去认证+授权/外部 MySQL 数据库 配置
