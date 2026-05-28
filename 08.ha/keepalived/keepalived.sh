@@ -1,4 +1,4 @@
-# !/bin/bash
+#!/bin/bash
 yum -y install keepalived
 
 cp -a /etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf.bak
