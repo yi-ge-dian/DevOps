@@ -44,7 +44,7 @@ fi
 # 检查防火墙状态，如果为 active，则禁用防火墙
 firewall_status=$(systemctl is-active firewalld)
 if [[ "$firewall_status" == "active" ]]; then
-    systemctl disable firewalld --now 
+    systemctl disable firewalld --now
     print_colored "$GREEN" "[Success] Firewall disabled"
 else
     print_colored "$GREEN" "[Success] Firewall is already disabled"

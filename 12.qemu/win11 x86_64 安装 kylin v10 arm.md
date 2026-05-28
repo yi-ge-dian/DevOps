@@ -6,7 +6,7 @@ https://qemu.weilnetz.de/w64/
 
 添加环境变量
 
-![image](./assets/image.png)
+![image](assets/image.png)
 
 ## 1.2. 下载固件
 

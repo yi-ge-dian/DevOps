@@ -82,7 +82,7 @@ mkdir -pv /data/$Port/log/{binlog,relaylog}
 touch /data/$Port/etc/my.cnf
 chown -R mysql.mysql /data/$Port/
 chown -R mysql.mysql /usr/local/mysql/
-chmod 700 /data/$Port
+chmod -R 755 /data/$Port
 
 # 初始化数据库
 mysqld --initialize-insecure --user=mysql --basedir=/usr/local/mysql --datadir=/data/$Port/data

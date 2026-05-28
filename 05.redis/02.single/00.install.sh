@@ -90,7 +90,7 @@ EOF
 source /etc/profile
 
 # 配置目录
-mkdir -pv /data/6379/{data,etc,log,backup}
+mkdir -pv /data/6379/{data,etc,run,log,backup}
 cp -a /usr/local/src/redis-${Redis_version}/redis.conf /data/6379/etc/redis.conf
 useradd -r -s /sbin/nologin redis
 chown -R redis.redis /data/6379/
@@ -104,8 +104,10 @@ cat >> /data/6379/etc/redis.conf << EOF
 #----------------------------------------------------------
 bind 0.0.0.0
 port 6379
+unixsocket /data/6379/run/redis.sock
 supervised systemd
 dir /data/6379/data
+pidfile /data/6379/run/redis.pid
 logfile "/data/6379/log/redis.log"
 #----------------------------------------------------------
 #slow log configuration
