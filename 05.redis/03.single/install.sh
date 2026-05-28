@@ -49,7 +49,7 @@ chmod +x /etc/rc.d/rc.local
 print_colored "$GREEN" "[Success] Transparent_hugepage set"
 
 # 判断是否下载了源码包
-cd /usr/local/src
+cd /usr/local/src || exit
 if [[ -f "redis-${Redis_version}.tar.gz" ]]; then
     print_colored "$GREEN" "[Success] Redis tar already exists"
 else
@@ -64,7 +64,7 @@ fi
 
 # 安装 redis
 tar xvf redis-${Redis_version}.tar.gz
-cd /usr/local/src/redis-${Redis_version}
+cd /usr/local/src/redis-${Redis_version} || exit
 yum install -y systemd-devel
 make -j "$(nproc)" USE_SYSTEMD=yes
 if [[ $? -ne 0 ]]; then
@@ -81,8 +81,7 @@ fi
 print_colored "$GREEN" "[Success] Redis installed"
 
 # 查看 redis 版本
-cd /usr/local/redis/bin
-redis-server -v
+/usr/local/redis/bin/redis-server -v
 
 # 配置环境变量
 cat >> /etc/profile << EOF
@@ -91,44 +90,53 @@ EOF
 source /etc/profile
 
 # 配置目录
-mkdir -pv /data/6379/{data,etc,log,run,backup}
+mkdir -pv /data/6379/{data,etc,log,backup}
 cp -a /usr/local/src/redis-${Redis_version}/redis.conf /data/6379/etc/redis.conf
 useradd -r -s /sbin/nologin redis
 chown -R redis.redis /data/6379/
 chown -R redis.redis /usr/local/redis/
-chmod 700 /data/6379
+chmod -R 755 /data/6379
 
 # 配置文件
 cat >> /data/6379/etc/redis.conf << EOF
-####################################### basic configuration
+#----------------------------------------------------------
+#basic configuration
+#----------------------------------------------------------
 bind 0.0.0.0
 port 6379
-unixsocket /data/6379/run/redis.sock
 supervised systemd
 dir /data/6379/data
-pidfile /data/6379/run/redis.pid
 logfile "/data/6379/log/redis.log"
-####################################### slow log configuration
+#----------------------------------------------------------
+#slow log configuration
+#----------------------------------------------------------
 slowlog-log-slower-than 100000
 slowlog-max-len 128
-####################################### connection configuration
+#----------------------------------------------------------
+#connection configuration
+#----------------------------------------------------------
 maxclients 10000
 requirepass 123456
 maxmemory 16gb
 maxmemory-policy volatile-lru
-######################################## persistence configuration
+#----------------------------------------------------------
+#persistence configuration
+#----------------------------------------------------------
 appendonly yes
 appendfilename "appendonly-6379.aof"
 appendfsync everysec
 no-appendfsync-on-rewrite yes
 auto-aof-rewrite-percentage 100
 auto-aof-rewrite-min-size 1024MB
-####################################### safe configuration
+#----------------------------------------------------------
+#safe configuration
+#----------------------------------------------------------
 rename-command FLUSHDB ""
 rename-command FLUSHALL ""
 rename-command DEBUG ""
 rename-command SHUTDOWN ""
 rename-command KEYS ""
+protected-mode yes
 EOF
 print_colored "$GREEN" "[Success] Redis conf configured"
 
