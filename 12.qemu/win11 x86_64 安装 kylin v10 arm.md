@@ -133,7 +133,7 @@ qemu-system-aarch64 -m 4000 -cpu cortex-a72 -smp 4,cores=4,threads=1,sockets=1 -
 
 <img width="654" height="225" alt="image" src="https://github.com/user-attachments/assets/c7982186-06c8-40d7-a872-365cbd410fd5" />
 
-## 1.7. 启动虚拟机
+## 1.8. 启动虚拟机
 
 安装好之后，我们需要再次启动（无需再次指定iso文件启动），进入到qemu所在位置（D:\test_arm\qemu_arm64），进入到cmd命令行，执行启动命令
 ```shell
