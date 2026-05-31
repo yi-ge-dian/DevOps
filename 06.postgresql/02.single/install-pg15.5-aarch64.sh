@@ -76,9 +76,9 @@ wal_sender_timeout = 60s
 wal_log_hints = on
 archive_mode = on
 archive_command = 'test ! -f /data/5432/archive/%f && cp %p /data/5432/archive/%f'
-wal_keep_size = '8GB'
-max_wal_size = '36GB'
-min_wal_size = '12GB'
+wal_keep_size = 2GB
+max_wal_size = 10GB
+min_wal_size = 1GB
 EOF
 
 
