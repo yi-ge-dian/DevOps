@@ -30,6 +30,8 @@ BASE_DIR=/usr/local/prometheus
 DATA_DIR=/data/prometheus/data
 LOG_DIR=/data/prometheus/log
 ETC_DIR=/data/prometheus/etc
+BACKUP_DIR=/data/prometheus/backup
+RUN_DIR=/data/prometheus/run
 
 function create_user() {
     if id prometheus &>/dev/null; then
@@ -48,19 +50,25 @@ function download_prometheus() {
 }
 
 function unpack_prometheus() {
+  if [ ! -d  prometheus-${VERSION}.linux-${ARCH} ]; then
     cd ${DOWNLOAD_DIR} || exit 1
     print_colored "$BLUE" "Unpacking prometheus..."
     tar xvf ${DOWNLOAD_DIR}/${SOFTWARE}
     ln -s prometheus-${VERSION}.linux-${ARCH} ${BASE_DIR}
     chown -R prometheus:prometheus ${BASE_DIR}/
     chmod -R 755 ${BASE_DIR}
+  fi
+}
+
+function configure_prometheus() {
+    print_colored "$BLUE" "Configuring prometheus..."
+    mkdir -p ${DATA_DIR} ${LOG_DIR} ${ETC_DIR} ${BACKUP_DIR} ${RUN_DIR}
+    chown -R prometheus:prometheus /data/prometheus
+    chmod -R 755 /data/prometheus
 }
 
 function install_prometheus() {
     print_colored "$BLUE" "Installing prometheus..."
-    mkdir -p ${DATA_DIR} ${LOG_DIR} ${ETC_DIR}
-    chown -R prometheus:prometheus ${DATA_DIR} ${LOG_DIR} ${ETC_DIR}
-    chmod -R 755 ${DATA_DIR} ${LOG_DIR} ${ETC_DIR}
     cp -a ${BASE_DIR}/prometheus.yml ${ETC_DIR}/
     mv ${BASE_DIR}/prometheus.yml ${BASE_DIR}/prometheus.yml.bak
 }
@@ -104,6 +112,7 @@ function main() {
   create_user
   download_prometheus
   unpack_prometheus
+  configure_prometheus
   install_prometheus
   create_service
   start_service

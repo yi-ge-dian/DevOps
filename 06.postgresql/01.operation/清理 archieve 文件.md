@@ -40,5 +40,12 @@ SegID（低32位）	00000028	40	WAL 逻辑日志文件号的低位部分
 手动切换 wal 文件：
 SELECT pg_switch_wal();
 
+查看主从复制状态
+SELECT client_addr, state, sent_lsn, write_lsn, flush_lsn, replay_lsn FROM pg_stat_replication;
+查看最慢的 lsn 对应的 wal 文件
+
 清理
-pg_archivecleanup -n /data/5432/archive 000000180000000000000028
+pg_archivecleanup -d /data/5432/archive  0000001800000005000000CE
+
+慎重执行
+find /data/5432/archive -name "*.history" -mtime +15 -delete
