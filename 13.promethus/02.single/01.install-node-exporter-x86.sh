@@ -59,7 +59,7 @@ function unpack_node_exporter() {
     fi
 }
 
-function config_node_exporter() {
+function configure_node_exporter() {
     ln -s node_exporter-${VERSION}.linux-${ARCH} ${BASE_DIR}
     chown -R node_exporter:node_exporter ${BASE_DIR}/
     chmod -R 755 ${BASE_DIR}
