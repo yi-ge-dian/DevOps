@@ -65,12 +65,12 @@ function configure_prometheus() {
     mkdir -p ${DATA_DIR} ${LOG_DIR} ${ETC_DIR} ${BACKUP_DIR} ${RUN_DIR}
     chown -R prometheus:prometheus /data/prometheus
     chmod -R 755 /data/prometheus
+    cp -a ${BASE_DIR}/prometheus.yml ${ETC_DIR}/
+    mv ${BASE_DIR}/prometheus.yml ${BASE_DIR}/prometheus.yml.bak
 }
 
 function install_prometheus() {
     print_colored "$BLUE" "Installing prometheus..."
-    cp -a ${BASE_DIR}/prometheus.yml ${ETC_DIR}/
-    mv ${BASE_DIR}/prometheus.yml ${BASE_DIR}/prometheus.yml.bak
 }
 
 function create_service() {

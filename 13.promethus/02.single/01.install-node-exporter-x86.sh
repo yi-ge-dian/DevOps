@@ -32,7 +32,7 @@ LOG_DIR=/data/node_exporter/log
 ETC_DIR=/data/node_exporter/etc
 
 function create_user() {
-    if id prometheus &>/dev/null; then
+    if id node_exporter &>/dev/null; then
         print_colored "$BLUE" "User prometheus already exists"
     else
         print_colored "$BLUE" "Creating user prometheus..."
@@ -82,7 +82,9 @@ User=node_exporter
 Group=node_exporter
 Restart=on-failure
 ExecStart=${BASE_DIR}/node_exporter
-Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
 EOF
 }
 
@@ -98,7 +100,7 @@ function main() {
   create_user
   download_node_exporter
   unpack_node_exporter
-  config_node_exporter
+  configure_node_exporter
   install_node_exporter
   create_service
   start_node_exporter
