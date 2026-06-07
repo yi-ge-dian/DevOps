@@ -7,7 +7,6 @@ YELLOW='\033[0;33m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-# 颜色打印函数
 print_colored() {
   local color="$1"
   local message="$2"
@@ -16,11 +15,12 @@ print_colored() {
 
 ARCH=x86_64
 
-function check_root() {
+function check_root {
   if [[ $EUID -ne 0 ]]; then
     print_colored "$RED" "[Error] This script must be run as root"
     exit 1
   fi
+  print_colored "$GREEN" "[Success] Root user checked"
 }
 
 function check_selinux() {
@@ -37,7 +37,7 @@ function check_selinux() {
 
 function check_firewall() {
   local firewall_status
-  firewall_status=$(systemctl active firewalld)
+  firewall_status=$(systemctl is-active firewalld)
   if [[ "$firewall_status" == "active" ]]; then
     systemctl disable firewalld --now
     print_colored "$GREEN" "[Success] Firewall disabled"
@@ -50,11 +50,13 @@ function update_software_sources() {
   local bak_dir
   bak_dir="/etc/yum.repos.d/bak_$(date +%Y%m%d_%H%M%S)"
   mkdir "$bak_dir"
-  mv /etc/yum.repos.d/*.repo "$bak_dir"
-  curl -s -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-7.repo
-  curl -s -o /etc/yum.repos.d/epel.repo https://mirrors.aliyun.com/repo/epel-7.repo
+  cp -a /etc/yum.repos.d/*.repo "$bak_dir"
+  sed -e 's|^mirrorlist=|#mirrorlist=|g' \
+    -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.aliyun.com/rockylinux|g' \
+    -i.bak \
+    /etc/yum.repos.d/rocky*.repo
   yum clean all
-  yum makecache fast
+  yum makecache
   print_colored "$GREEN" "[Success] Software sources updated"
 }
 
