@@ -130,7 +130,7 @@ EOF
   print_colored "$GREEN" "[Success] Time synchronized with chrony service In Public NTP Servers"
   print_colored "$YELLOW" "[Warning] Please manually edit the chrony service In Private NTP Servers, restart the chrony service and manually synchronize the clock time using 'hwclock --systohc'"
 
-  hwclock --systohc
+  hwclock -w
   if [[ $? -ne 0 ]]; then
     print_colored "$RED" "[Error] Failed to sync hardware clock with system time"
     exit 1
