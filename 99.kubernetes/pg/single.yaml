@@ -106,7 +106,7 @@ spec:
                 - -c
                 - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" -h 127.0.0.1 -p 5432
             initialDelaySeconds: 30
-            periodSeconds: 10
+            periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
@@ -115,9 +115,9 @@ spec:
                 - sh
                 - -c
                 - pg_isready -U ${POSTGRES_USER} -d "$POSTGRES_DB" -h 127.0.0.1 -p 5432
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            timeoutSeconds: 3
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 5
             failureThreshold: 3
       volumes:
         - name: postgresql-conf
