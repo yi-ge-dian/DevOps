@@ -1,81 +1,144 @@
----
+#【必须】修改 namespace
+#【必须】修改 password 的 base64 编码
+#【必须】修改 storageClassName
+#【必须】修改 image
+#【非必须】修改 resource requests/limits maxmemory
+#【非必须】修改 svc-redis-nodeport
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cm-redis
-  namespace: xx # 项目名称
+  namespace: xxxx
 data:
   redis.conf: |
     bind 0.0.0.0
     port 6379
-    protected-mode no
-    requirepass 123456
+    maxmemory 400mb
+    maxmemory-policy volatile-lru
+    appendonly yes
+    appendfsync everysec
+    save 900 1
+    save 300 10
+    save 60 10000
 ---
 apiVersion: v1
-kind: PersistentVolumeClaim
+kind: Secret
 metadata:
-  name: pvc-redis
-  namespace: xx # 项目名称
-spec:
-  storageClassName: nfs-client #使用存储类自行替换
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10G
+  name: secret-redis
+  namespace: xxxx
+type: Opaque
+data:
+  password: yyyy
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: deploy-redis
-  namespace: xx # 项目名称
+  name: sts-redis
+  namespace: xxxx
+  labels:
+    app: redis
 spec:
+  serviceName: svc-redis-headless
   replicas: 1
   selector:
     matchLabels:
-      app: app-redis
+      app: redis
   template:
     metadata:
       labels:
-        app: app-redis
+        app: redis
     spec:
       containers:
-      - image: redis:7.4.8
-        command: [ "redis-server", "/etc/redis/redis.conf" ]
-        name: redis
-        ports:
-        - containerPort: 6379
-        volumeMounts:
-        - name: volume-cm
-          mountPath: /etc/redis/redis.conf
-          subPath: redis.conf
-        - name: volume-pvc
-          mountPath: /data
+        - name: redis
+          image: docker-host.csnd.com/redis:7.4.8-alpine-amd64
+          command:
+            - redis-server
+          args:
+            - /etc/redis/redis.conf
+            - "--requirepass"
+            - "$(REDIS_PASSWORD)"
+          ports:
+            - name: redis
+              containerPort: 6379
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: secret-redis
+                  key: password
+          volumeMounts:
+            - name: redis-conf
+              mountPath: /etc/redis/redis.conf
+              subPath: redis.conf
+            - name: redis-data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli -a "$REDIS_PASSWORD" ping | grep -q PONG
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli -a "$REDIS_PASSWORD" ping | grep -q PONG
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: redis-conf
+          configMap:
+            name: cm-redis
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-      volumes:
-      - name: volume-cm
-        configMap:
-          name: cm-redis
-      - name: volume-pvc
-        persistentVolumeClaim:
-          claimName: pvc-redis
+            storage: 10Gi
+        storageClassName: nfs-client-ssd
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: redis-svc
-  namespace: xx # 项目名称
+  name: svc-redis-headless
+  namespace: xxxx
 spec:
-  ports:
-  - name: tcp-redis-6379
-    protocol: TCP
-    port: 6379
-    targetPort: 6379
+  clusterIP: None
   selector:
-    app: app-redis
+    app: redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: svc-redis-nodeport
+#   namespace: xxxx
+# spec:
+#   selector:
+#     app: redis
+#   ports:
+#     - name: redis
+#       port: 6379
+#       targetPort: 6379
+#       nodePort: 30000
+#   type: NodePort

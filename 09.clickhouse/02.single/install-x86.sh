@@ -159,3 +159,7 @@ function main() {
   start_clickhouse
   print_colored "$GREEN" "Clickhouse installed successfully"
 }
+
+main
+
+# clickhouse-client --password 123456 -m
