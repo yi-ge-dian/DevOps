@@ -1,13 +1,13 @@
-#【必须】修改 namespace
-#【必须】修改 password 、username、database 的 base64 编码
+#【必须】修改 namespace --> xxxx
+#【必须】修改 password 的 base64 编码 --> yyyy 、database 的 base64 编码 ---> zzzz 
 #【必须】修改 storageClassName
 #【必须】修改 image
+#【必须】修改 svc-postgresql-nodeport
 #【非必须】修改 resource requests/limits maxmemory
-#【非必须】修改 svc-postgresql-nodeport
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm-postgresql
+  name: cm-postgresql-dev
   namespace: xxxx
 data:
   postgresql.conf: |
@@ -33,31 +33,31 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: secret-postgresql
+  name: secret-postgresql-dev
   namespace: xxxx
 type: Opaque
 data:
   password: yyyy
-  username: postgres
+  username: cG9zdGdyZXM=
   database: zzzz
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: sts-postgresql
+  name: sts-postgresql-dev
   namespace: xxxx
   labels:
-    app: postgresql
+    app: postgresql-dev
 spec:
-  serviceName: svc-postgresql-headless
+  serviceName: svc-postgresql-headless-dev
   replicas: 1
   selector:
     matchLabels:
-      app: postgresql
+      app: postgresql-dev
   template:
     metadata:
       labels:
-        app: postgresql
+        app: postgresql-dev
     spec:
       containers:
         - name: postgresql
@@ -67,17 +67,17 @@ spec:
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
-                  name: secret-postgresql
+                  name: secret-postgresql-dev
                   key: database
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: secret-postgresql
+                  name: secret-postgresql-dev
                   key: username
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: secret-postgresql
+                  name: secret-postgresql-dev
                   key: password
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
@@ -122,7 +122,7 @@ spec:
       volumes:
         - name: postgresql-conf
           configMap:
-            name: cm-postgresql
+            name: cm-postgresql-dev
   volumeClaimTemplates:
     - metadata:
         name: postgresql-data
@@ -137,28 +137,28 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: svc-postgresql-headless
+  name: svc-postgresql-headless-dev
   namespace: xxxx
 spec:
   clusterIP: None
   selector:
-    app: postgresql
+    app: postgresql-dev
   ports:
     - name: postgresql
       port: 5432
       targetPort: 5432
-# ---
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: svc-postgresql-nodeport
-#   namespace: xxxx
-# spec:
-#   selector:
-#     app: postgresql
-#   ports:
-#     - name: postgresql
-#       port: 5432       
-#       targetPort: 5432
-#       nodePort: 30001
-#   type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-postgresql-nodeport-dev
+  namespace: xxxx
+spec:
+  selector:
+    app: postgresql-dev
+  ports:
+    - name: postgresql
+      port: 5432       
+      targetPort: 5432
+      nodePort: 30002
+  type: NodePort

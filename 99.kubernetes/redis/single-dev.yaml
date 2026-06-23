@@ -1,13 +1,13 @@
-#【必须】修改 namespace
-#【必须】修改 password 的 base64 编码
+#【必须】修改 namespace --> xxxx
+#【必须】修改 password 的 base64 编码 --> yyyy
 #【必须】修改 storageClassName
 #【必须】修改 image
+#【必须】修改 svc-redis-nodeport
 #【非必须】修改 resource requests/limits maxmemory
-#【非必须】修改 svc-redis-nodeport
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm-redis
+  name: cm-redis-dev
   namespace: xxxx
 data:
   redis.conf: |
@@ -24,7 +24,7 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: secret-redis
+  name: secret-redis-dev
   namespace: xxxx
 type: Opaque
 data:
@@ -33,20 +33,20 @@ data:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: sts-redis
+  name: sts-redis-dev
   namespace: xxxx
   labels:
-    app: redis
+    app: redis-dev
 spec:
-  serviceName: svc-redis-headless
+  serviceName: svc-redis-headless-dev
   replicas: 1
   selector:
     matchLabels:
-      app: redis
+      app: redis-dev
   template:
     metadata:
       labels:
-        app: redis
+        app: redis-dev
     spec:
       containers:
         - name: redis
@@ -64,7 +64,7 @@ spec:
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: secret-redis
+                  name: secret-redis-dev
                   key: password
           volumeMounts:
             - name: redis-conf
@@ -102,7 +102,7 @@ spec:
       volumes:
         - name: redis-conf
           configMap:
-            name: cm-redis
+            name: cm-redis-dev
   volumeClaimTemplates:
     - metadata:
         name: redis-data
@@ -117,28 +117,28 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: svc-redis-headless
+  name: svc-redis-headless-dev
   namespace: xxxx
 spec:
   clusterIP: None
   selector:
-    app: redis
+    app: redis-dev
   ports:
     - name: redis
       port: 6379
       targetPort: 6379
-# ---
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: svc-redis-nodeport
-#   namespace: xxxx
-# spec:
-#   selector:
-#     app: redis
-#   ports:
-#     - name: redis
-#       port: 6379
-#       targetPort: 6379
-#       nodePort: 30000
-#   type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-redis-nodeport-dev
+  namespace: xxxx
+spec:
+  selector:
+    app: redis-dev
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+      nodePort: 30000
+  type: NodePort

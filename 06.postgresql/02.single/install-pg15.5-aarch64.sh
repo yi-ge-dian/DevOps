@@ -3,7 +3,25 @@ wget https://ftp.postgresql.org/pub/source/v15.5/postgresql-15.5.tar.gz
 tar -xzf postgresql-15.5.tar.gz
 cd postgresql-15.5
 
+# 在线
 yum install -y readline-devel zlib-devel openssl-devel libxml2-devel libxslt-devel perl-devel perl-ExtUtils-Embed python3-devel systemd-devel lz4-devel libzstd-devel libuuid-devel libicu-devel
+# 离线
+mkdir -pv offline-packages
+yum install -y --downloadonly --downloaddir=./offline-packages \
+    readline-devel \
+    zlib-devel \
+    openssl-devel \
+    libxml2-devel \
+    libxslt-devel \
+    perl-devel \
+    perl-ExtUtils-Embed \
+    python3-devel \
+    systemd-devel \
+    lz4-devel \
+    libzstd-devel \
+    libuuid-devel \
+    libicu-devel
+rpm -ivh *.rpm
 
 ./configure --prefix=/usr/local/pgsql \
             --with-pgport=5432 \
@@ -30,12 +48,13 @@ source /etc/profile
 
 mkdir -pv /data/5432/{archive,backup,data,log,run}
 chown -R postgres.postgres /usr/local/pgsql/
+chmod -R 755 /usr/local/pgsql/
 chown -R postgres.postgres /data/5432/
-chmod -R 700 /data/5432/
+chmod -R 755 /data/5432/
 
 
 sudo -iu postgres initdb -D /data/5432/data -U postgres -E UTF8 --locale=zh_CN.UTF-8
-
+ll /data/5432/data
 
 cp -a /data/5432/data/pg_hba.conf /data/5432/data/pg_hba.conf.bak
 cp -a /data/5432/data/postgresql.conf /data/5432/data/postgresql.conf.bak
@@ -77,7 +96,7 @@ wal_log_hints = on
 archive_mode = on
 archive_command = 'test ! -f /data/5432/archive/%f && cp %p /data/5432/archive/%f'
 wal_keep_size = 2GB
-max_wal_size = 10GB
+max_wal_size = 4GB
 min_wal_size = 1GB
 EOF
 

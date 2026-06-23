@@ -35,7 +35,7 @@ After=network.target postgresql5432.service
 User=prometheus
 Group=prometheus
 Type=simple
-Environment=DATA_SOURCE_NAME="postgresql://prometheus:prometheus@localhost:5432/postgres?sslmode=disable"
+Environment=DATA_SOURCE_NAME=postgresql://prometheus:prometheus@localhost:5432/postgres?sslmode=disable
 ExecStart=/usr/local/bin/postgres_exporter
 Restart=on-failure
 
