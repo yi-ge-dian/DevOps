@@ -1,13 +1,11 @@
-cd /usr/local/src
-wget https://ftp.postgresql.org/pub/source/v15.5/postgresql-15.5.tar.gz
-tar -xzf postgresql-15.5.tar.gz
-cd postgresql-15.5
-
 # 在线
-yum install -y readline-devel zlib-devel openssl-devel libxml2-devel libxslt-devel perl-devel perl-ExtUtils-Embed python3-devel systemd-devel lz4-devel libzstd-devel libuuid-devel libicu-devel
+yum install -y vim wget net-tools lsof iotop chrony unzip tree gcc make perl gcc-c++ cmake tar
+yum install -y readline-devel zlib-devel openssl-devel libxml2-devel libxslt-devel perl-devel perl-ExtUtils-Embed python3-devel systemd-devel lz4-devel libzstd-devel libuuid-devel libicu-devel bison
+
 # 离线
 mkdir -pv offline-packages
 yum install -y --downloadonly --downloaddir=./offline-packages \
+    vim wget net-tools lsof iotop chrony unzip tree gcc make perl gcc-c++ cmake tar\
     readline-devel \
     zlib-devel \
     openssl-devel \
@@ -20,13 +18,17 @@ yum install -y --downloadonly --downloaddir=./offline-packages \
     lz4-devel \
     libzstd-devel \
     libuuid-devel \
-    libicu-devel
-rpm -ivh *.rpm
+    libicu-devel \
+    bison
 
+cd /usr/local/src
+wget https://ftp.postgresql.org/pub/source/v18.4/postgresql-18.4.tar.gz
+tar -xvzf postgresql-18.4.tar.gz
+cd postgresql-18.4
 ./configure --prefix=/usr/local/pgsql \
             --with-pgport=5432 \
             --with-openssl \
-            --with-perl --with-python --with-libxml --with-libxslt   \
+            --with-perl --with-python --with-libxml --with-libxslt \
             --with-systemd \
             --with-lz4 --with-zstd --with-uuid=e2fs --with-icu --enable-thread-safety
 make -j $(nproc)
@@ -53,7 +55,7 @@ chown -R postgres.postgres /data/5432/
 chmod -R 755 /data/5432/
 
 
-sudo -iu postgres initdb -D /data/5432/data -U postgres -E UTF8 --locale=zh_CN.UTF-8
+sudo -iu postgres initdb -D /data/5432/data -U postgres -E UTF8
 ll /data/5432/data
 
 cp -a /data/5432/data/pg_hba.conf /data/5432/data/pg_hba.conf.bak
@@ -101,60 +103,21 @@ min_wal_size = 1GB
 EOF
 
 
-cat > /usr/lib/systemd/system/postgresql5432.service << EOF
-# It's not recommended to modify this file in-place, because it will be
-# overwritten during package upgrades.  It is recommended to use systemd
-# "dropin" feature;  i.e. create file with suffix .conf under
-# /etc/systemd/system/postgresql-15.service.d directory overriding the
-# unit's defaults. You can also use "systemctl edit postgresql-15"
-# Look at systemd.unit(5) manual page for more info.
-
-# Note: changing PGDATA will typically require adjusting SELinux
-# configuration as well.
-
-# Note: do not use a PGDATA pathname containing spaces, or you will
-# break postgresql-15-setup.
+cat > /etc/systemd/system/postgresql5432.service << EOF
 [Unit]
-Description=PostgreSQL 15 database server
-Documentation=https://www.postgresql.org/docs/15/static/
-After=syslog.target
+Description=PostgreSQL database server
+Documentation=man:postgres(1)
 After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=notify
-
 User=postgres
-Group=postgres
-
-# Note: avoid inserting whitespace in these Environment= lines, or you may
-# break postgresql-setup.
-
-# Location of database directory
-Environment=PGDATA=/data/5432/data/
-
-# Where to send early-startup messages from the server (before the logging
-# options of postgresql.conf take effect)
-# This is normally controlled by the global default set by systemd
-# StandardOutput=syslog
-
-# Disable OOM kill on the postmaster
-OOMScoreAdjust=-1000
-Environment=PG_OOM_ADJUST_FILE=/proc/self/oom_score_adj
-Environment=PG_OOM_ADJUST_VALUE=0
-
-ExecStart=/usr/local/pgsql/bin/postmaster -D ${PGDATA}
+ExecStart=/usr/local/pgsql/bin/postgres -D /data/5432/data
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=mixed
 KillSignal=SIGINT
- 
-# Do not set any timeout value, so that systemd will not kill postmaster
-# during crash recovery.
-TimeoutSec=0
-
-# 0 is the same as infinity, but "infinity" needs systemd 229
-TimeoutStartSec=0
-
-TimeoutStopSec=1h
+TimeoutSec=infinity
 
 [Install]
 WantedBy=multi-user.target
