@@ -1,6 +1,7 @@
 # 在线
 yum install -y vim wget net-tools lsof iotop chrony unzip tree gcc make perl gcc-c++ cmake tar
-yum install -y readline-devel zlib-devel openssl-devel libxml2-devel libxslt-devel perl-devel perl-ExtUtils-Embed python3-devel systemd-devel lz4-devel libzstd-devel libuuid-devel libicu-devel bison
+yum install -y readline-devel zlib-devel openssl-devel libxml2-devel libxslt-devel perl-devel perl-ExtUtils-Embed python3-devel systemd-devel lz4-devel libzstd-devel libuuid-devel libicu-devel bison flex
+
 
 # 离线
 mkdir -pv offline-packages
@@ -19,7 +20,8 @@ yum install -y --downloadonly --downloaddir=./offline-packages \
     libzstd-devel \
     libuuid-devel \
     libicu-devel \
-    bison
+    bison \
+    flex \
 
 cd /usr/local/src
 wget https://ftp.postgresql.org/pub/source/v18.4/postgresql-18.4.tar.gz
@@ -102,36 +104,31 @@ max_wal_size = 4GB
 min_wal_size = 1GB
 EOF
 
-
-cat > /etc/systemd/system/postgresql5432.service << EOF
+cat >/etc/systemd/system/postgresql5432.service<<'EOF'
 [Unit]
 Description=PostgreSQL database server
-Documentation=man:postgres(1)
-After=network-online.target
-Wants=network-online.target
+After=network.target
 
 [Service]
-Type=notify
+Type=forking
 User=postgres
-ExecStart=/usr/local/pgsql/bin/postgres -D /data/5432/data
-ExecReload=/bin/kill -HUP $MAINPID
-KillMode=mixed
-KillSignal=SIGINT
-TimeoutSec=infinity
+Group=postgres
+Environment=PGPORT=5432
+Environment=PGDATA=/data/5432/data
+OOMScoreAdjust=-1000
+ExecStart=/usr/local/pgsql/bin/pg_ctl  start  -D ${PGDATA} -s -o "-p ${PGPORT}" -w -t 300
+ExecStop=/usr/local/pgsql/bin/pg_ctl   stop   -D ${PGDATA} -s -m fast
+ExecReload=/usr/local/pgsql/bin/pg_ctl reload -D ${PGDATA} -s
+TimeoutSec=300
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
+
 systemctl daemon-reload
 systemctl enable postgresql5432 --now
-if systemctl is-active --quiet postgresql5432; then
-    print_colored "$GREEN" "PostgreSQL service started successfully"
-    systemctl status postgresql5432 --no-pager
-else
-    print_colored "$RED" "Failed to start PostgreSQL service"
-    exit 1
-fi
+systemctl status postgresql5432
 
 # e.g.create user
 # 创建 my_user 用户，并设置密码为 123456，user 默认具有登录权限
