@@ -1,5 +1,5 @@
 #【必须】修改 namespace --> xxxx
-#【必须】修改 password 的 base64 编码 --> yyyy 、database 的 base64 编码 ---> zzzz 
+#【必须】修改 password 的 base64 编码 --> yyyy 、database 的 base64 编码 ---> zzzz
 #【必须】修改 storageClassName
 #【必须】修改 image
 #【必须】修改 svc-postgresql-nodeport
@@ -94,11 +94,11 @@ spec:
               mountPath: /var/lib/postgresql/data
           resources:
             requests:
-              memory: "1Gi"
-              cpu: "500m"
+              memory: "2Gi"
+              cpu: "1"
             limits:
               memory: "2Gi"
-              cpu: "2"
+              cpu: "1"
           livenessProbe:
             exec:
               command:
@@ -158,7 +158,7 @@ spec:
     app: postgresql-dev
   ports:
     - name: postgresql
-      port: 5432       
+      port: 5432
       targetPort: 5432
       nodePort: 30002
   type: NodePort
